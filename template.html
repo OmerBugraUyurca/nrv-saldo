@@ -56,7 +56,7 @@
 </head>
 <body>
 <h1>Germany NRV Balance (System Direction)</h1>
-<p class="subtitle">15-min quarters per hour x day | Unit: MW | Positive = Long, Negative = Short</p>
+<p class="subtitle">15-min quarters per hour x day | Unit: MW | Positive = Short, Negative = Long</p>
 <p class="updated">Last updated: __UPDATED_AT__</p>
 
 <div class="stat-row" id="statRow"></div>
@@ -100,9 +100,9 @@
 </div>
 
 <div class="legend-wrap">
-  <span>Short (-)</span>
+  <span>Long (-)</span>
   <div class="grad"></div>
-  <span>(+) Long</span>
+  <span>(+) Short</span>
 </div>
 
 <div class="table-outer" id="tableOuter"></div>
@@ -194,8 +194,8 @@ function buildStats() {
   const avg = Math.round(allVals.reduce((a,b)=>a+b,0)/allVals.length);
   const stats = [
     {label:"Total quarters", value: allVals.length, sub:""},
-    {label:"Long (positive)", value: pos, sub: (pos/allVals.length*100).toFixed(1)+"%"},
-    {label:"Short (negative)", value: neg, sub: (neg/allVals.length*100).toFixed(1)+"%"},
+    {label:"Short (positive)", value: pos, sub: (pos/allVals.length*100).toFixed(1)+"%"},
+    {label:"Long (negative)", value: neg, sub: (neg/allVals.length*100).toFixed(1)+"%"},
     {label:"Average", value: (avg>0?"+":"")+avg+" MW", sub:""},
     {label:"Min", value: Math.min(...allVals)+" MW", sub:""},
     {label:"Max", value: Math.max(...allVals)+" MW", sub:""},
@@ -250,7 +250,7 @@ function render() {
     const wk = isWeekend(ds) ? " weekend" : "";
     html += '<th class="th-day'+wk+'"><div>'+dayNum(ds)+'</div><div style="font-size:9px;font-weight:400;color:#aaa">'+dowOf(ds)+'</div></th>';
   });
-  html += '<th class="th-avg"><div style="display:flex;gap:6px;justify-content:center">Avg MW <span style="font-size:9px;color:#999;font-weight:400">| Long%</span></div></th>';
+  html += '<th class="th-avg"><div style="display:flex;gap:6px;justify-content:center">Avg MW <span style="font-size:9px;color:#999;font-weight:400">| Short%</span></div></th>';
   html += "</tr></thead><tbody>";
 
   ROWS.forEach(rowKey => {
@@ -279,12 +279,12 @@ function render() {
     const valid = rowVals.filter(v => v !== null);
     if (valid.length) {
       const avg = Math.round(valid.reduce((a,b)=>a+b,0)/valid.length);
-      const longPct = Math.round(valid.filter(v=>v>0).length/valid.length*100);
-      const pctClass = longPct >= 50 ? "up" : "down";
-      const pctLabel = longPct >= 50 ? "+"+longPct+"%" : "-"+(100-longPct)+"%";
+      const shortPct = Math.round(valid.filter(v=>v>0).length/valid.length*100);
+      const pctClass = shortPct >= 50 ? "up" : "down";
+      const pctLabel = shortPct >= 50 ? "S "+shortPct+"%" : "L "+(100-shortPct)+"%";
       const avgBg = getColor(avg, useMin, useMax);
       const avgTc = textCol(avg, useMin, useMax);
-      html += '<td class="avg-cell" style="background:'+avgBg+';color:'+avgTc+'" data-v="'+avg+'" data-row="'+rowKey+'" data-date="avg" data-long="'+longPct+'"><div class="avg-inner"><span>'+fmtVal(avg,viewMode)+'</span><span class="avg-pct '+pctClass+'">'+pctLabel+'</span></div></td>';
+      html += '<td class="avg-cell" style="background:'+avgBg+';color:'+avgTc+'" data-v="'+avg+'" data-row="'+rowKey+'" data-date="avg" data-short="'+shortPct+'"><div class="avg-inner"><span>'+fmtVal(avg,viewMode)+'</span><span class="avg-pct '+pctClass+'">'+pctLabel+'</span></div></td>';
     } else {
       html += '<td class="avg-cell" style="background:#f0ede8;color:#ccc">-</td>';
     }
@@ -300,7 +300,7 @@ function render() {
       const parts = td.dataset.row.split("-");
       const hr = parts[0], qr = parts[1];
       const ds = td.dataset.date;
-      const dir = v > 0 ? "Long" : v < 0 ? "Short" : "Balanced";
+      const dir = v > 0 ? "Short" : v < 0 ? "Long" : "Balanced";
       const dc  = v > 0 ? "#1a7a3a" : v < 0 ? "#b22222" : "#888";
       const label = ds === "avg"
         ? hr+":"+QTR_MIN[qr]+" - Average"
