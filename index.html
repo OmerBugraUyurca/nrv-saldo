@@ -54,11 +54,10 @@
 </head>
 <body>
 <h1>Germany NRV Balance (System Direction)</h1>
-<p class="subtitle">15-min quarters per hour × day | Unit: MW | Positive = Long, Negative = Short</p>
+<p class="subtitle">15-min quarters per hour x day | Unit: MW | Positive = Long, Negative = Short</p>
 <p class="updated">Last updated: 2026-06-17</p>
 
 <div class="stat-row" id="statRow"></div>
-
 <div class="month-tabs" id="monthTabs"></div>
 
 <div class="controls">
@@ -66,8 +65,8 @@
     <label>Color scale:</label>
     <select id="scaleMode">
       <option value="global">Global</option>
-      <option value="sym500">±500 MW</option>
-      <option value="sym1000">±1000 MW</option>
+      <option value="sym500">+/-500 MW</option>
+      <option value="sym1000">+/-1000 MW</option>
       <option value="row">Row-relative</option>
     </select>
   </div>
@@ -75,7 +74,7 @@
     <label>Display:</label>
     <select id="viewMode">
       <option value="value">Value (MW)</option>
-      <option value="sign">Direction (+/−)</option>
+      <option value="sign">Direction (+/-)</option>
       <option value="abs">Absolute</option>
     </select>
   </div>
@@ -90,7 +89,7 @@
 </div>
 
 <div class="legend-wrap">
-  <span>Short (−)</span>
+  <span>Short (-)</span>
   <div class="grad"></div>
   <span>(+) Long</span>
 </div>
@@ -105,15 +104,15 @@ let currentMonth = "2026-06";
 const ROWS = [];
 for (let h = 0; h < 24; h++)
   for (const q of ["Q1","Q2","Q3","Q4"])
-    ROWS.push(`${String(h).padStart(2,"0")}-${q}`);
+    ROWS.push(String(h).padStart(2,"0") + "-" + q);
 
 const QTR_MIN = {Q1:"00",Q2:"15",Q3:"30",Q4:"45"};
+const DOW_NAMES = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
 function getDaysInMonth(ym) {
   const [y, m] = ym.split("-").map(Number);
   return new Date(y, m, 0).getDate();
 }
-
 function getWeekends(ym) {
   const [y, m] = ym.split("-").map(Number);
   const wk = new Set();
@@ -123,16 +122,14 @@ function getWeekends(ym) {
   }
   return wk;
 }
-
 function getDOW(ym, d) {
   const [y, m] = ym.split("-").map(Number);
-  return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][new Date(y,m-1,d).getDay()];
+  return DOW_NAMES[new Date(y, m-1, d).getDay()];
 }
 
 const tooltip = document.getElementById("tooltip");
 let activeDays = new Set();
 
-// Month tabs
 function buildMonthTabs() {
   const el = document.getElementById("monthTabs");
   el.innerHTML = "";
@@ -152,9 +149,7 @@ function buildMonthTabs() {
   });
 }
 
-// Day filter
 function initDayFilter() {
-  const raw = ALL_DATA[currentMonth] || {};
   const totalDays = getDaysInMonth(currentMonth);
   const DAYS = Array.from({length: totalDays}, (_, i) => i + 1);
   const WEEKENDS = getWeekends(currentMonth);
@@ -189,13 +184,13 @@ function initDayFilter() {
   container.querySelector("[data-action=weekdays]").onclick = () => {
     activeDays = new Set(DAYS.filter(d => !WEEKENDS.has(d)));
     container.querySelectorAll(".df-btn[data-day]").forEach(b =>
-      b.classList.toggle("active", activeDays.has(+b.dataset.day)));
+      b.classList.toggle("active", activeDays.has(Number(b.dataset.day))));
     buildStats(); render();
   };
   container.querySelector("[data-action=weekends]").onclick = () => {
     activeDays = new Set(DAYS.filter(d => WEEKENDS.has(d)));
     container.querySelectorAll(".df-btn[data-day]").forEach(b =>
-      b.classList.toggle("active", activeDays.has(+b.dataset.day)));
+      b.classList.toggle("active", activeDays.has(Number(b.dataset.day))));
     buildStats(); render();
   };
 }
@@ -205,11 +200,11 @@ function buildStats() {
   const allVals = [];
   ROWS.forEach(r => {
     activeDays.forEach(d => {
-      const v = raw[r]?.[String(d)];
+      const v = raw[r] ? raw[r][String(d)] : undefined;
       if (v !== undefined) allVals.push(v);
     });
   });
-  if (!allVals.length) return;
+  if (!allVals.length) { document.getElementById("statRow").innerHTML = ""; return; }
   const pos = allVals.filter(v => v > 0).length;
   const neg = allVals.filter(v => v < 0).length;
   const avg = Math.round(allVals.reduce((a,b)=>a+b,0)/allVals.length);
@@ -222,7 +217,7 @@ function buildStats() {
     {label:"Max", value: Math.max(...allVals)+" MW", sub:""},
   ];
   document.getElementById("statRow").innerHTML = stats.map(s =>
-    `<div class="stat"><div class="stat-label">${s.label}</div><div class="stat-value">${s.value}</div><div class="stat-sub">${s.sub}</div></div>`
+    '<div class="stat"><div class="stat-label">'+s.label+'</div><div class="stat-value">'+s.value+'</div><div class="stat-sub">'+s.sub+'</div></div>'
   ).join("");
 }
 
@@ -230,20 +225,18 @@ function getColor(v, mn, mx) {
   if (v === 0) return "#f0ede8";
   if (v > 0) {
     const t = Math.min(v/mx, 1);
-    return `rgb(${Math.round(220-t*110)},${Math.round(235-t*50)},${Math.round(220-t*140)})`;
+    return "rgb("+Math.round(220-t*110)+","+Math.round(235-t*50)+","+Math.round(220-t*140)+")";
   } else {
     const t = Math.min(Math.abs(v)/Math.abs(mn), 1);
-    return `rgb(${Math.round(220+t*80)},${Math.round(220-t*150)},${Math.round(220-t*150)})`;
+    return "rgb("+Math.round(220+t*80)+","+Math.round(220-t*150)+","+Math.round(220-t*150)+")";
   }
 }
-
 function textCol(v, mn, mx) {
   return (v >= 0 ? v/mx : Math.abs(v)/Math.abs(mn)) > 0.55 ? "#fff" : "#333";
 }
-
 function fmtVal(v, mode) {
-  if (mode === "sign") return v > 0 ? "+" : v < 0 ? "−" : "0";
-  if (mode === "abs") return Math.abs(v) >= 1000 ? (Math.abs(v)/1000).toFixed(1)+"k" : Math.abs(v).toString();
+  if (mode === "sign") return v > 0 ? "+" : v < 0 ? "-" : "0";
+  if (mode === "abs") return Math.abs(v) >= 1000 ? (Math.abs(v)/1000).toFixed(1)+"k" : String(Math.abs(v));
   if (Math.abs(v) >= 1000) return (v>0?"+":"")+(v/1000).toFixed(1)+"k";
   return (v>0?"+":"")+v;
 }
@@ -257,41 +250,43 @@ function render() {
 
   let gMin = Infinity, gMax = -Infinity;
   ROWS.forEach(r => visibleDays.forEach(d => {
-    const v = raw[r]?.[String(d)];
+    const v = raw[r] ? raw[r][String(d)] : undefined;
     if (v !== undefined) { gMin = Math.min(gMin,v); gMax = Math.max(gMax,v); }
   }));
   if (scaleMode === "sym500")  { gMin = -500;  gMax = 500; }
   if (scaleMode === "sym1000") { gMin = -1000; gMax = 1000; }
+  if (gMin === Infinity) { gMin = -100; gMax = 100; }
 
   let html = "<table><thead><tr>";
-  html += `<th class="th-corner">Hour / Qtr</th>`;
+  html += '<th class="th-corner">Hour / Qtr</th>';
   visibleDays.forEach(d => {
     const wk = WEEKENDS.has(d) ? " weekend" : "";
-    html += `<th class="th-day${wk}"><div>${d}</div><div style="font-size:9px;font-weight:400;color:#aaa">${getDOW(currentMonth,d)}</div></th>`;
+    html += '<th class="th-day'+wk+'"><div>'+d+'</div><div style="font-size:9px;font-weight:400;color:#aaa">'+getDOW(currentMonth,d)+'</div></th>';
   });
-  html += `<th class="th-avg"><div style="display:flex;gap:6px;justify-content:center">Avg MW <span style="font-size:9px;color:#999;font-weight:400">| Long%</span></div></th>`;
+  html += '<th class="th-avg"><div style="display:flex;gap:6px;justify-content:center">Avg MW <span style="font-size:9px;color:#999;font-weight:400">| Long%</span></div></th>';
   html += "</tr></thead><tbody>";
 
   ROWS.forEach(rowKey => {
-    const [hr, qr] = rowKey.split("-");
+    const parts = rowKey.split("-");
+    const hr = parts[0], qr = parts[1];
     const isQ1 = qr === "Q1";
-    const rowVals = visibleDays.map(d => raw[rowKey]?.[String(d)] ?? null);
+    const rowVals = visibleDays.map(d => (raw[rowKey] && raw[rowKey][String(d)] !== undefined) ? raw[rowKey][String(d)] : null);
 
     let rMin = Infinity, rMax = -Infinity;
     if (scaleMode === "row") rowVals.forEach(v => { if(v!==null){rMin=Math.min(rMin,v);rMax=Math.max(rMax,v);} });
-    const useMin = scaleMode === "row" ? rMin : gMin;
-    const useMax = scaleMode === "row" ? rMax : gMax;
+    const useMin = scaleMode === "row" ? (rMin===Infinity?-100:rMin) : gMin;
+    const useMax = scaleMode === "row" ? (rMax===-Infinity?100:rMax) : gMax;
 
-    html += `<tr${isQ1 ? ' class="hour-sep"' : ""}>`;
-    html += `<th class="th-row"><span class="hour">${hr}:00</span><span class="qtr">${qr}</span></th>`;
+    html += "<tr" + (isQ1 ? ' class="hour-sep"' : "") + ">";
+    html += '<th class="th-row"><span class="hour">'+hr+':00</span><span class="qtr">'+qr+'</span></th>';
 
     rowVals.forEach((v, di) => {
       const day = visibleDays[di];
       const wb = WEEKENDS.has(day) ? "border-left:2px solid #c0d4f0;" : "";
-      if (v === null) { html += `<td class="cell" style="background:#f5f4f0;color:#ccc;${wb}">—</td>`; return; }
+      if (v === null) { html += '<td class="cell" style="background:#f5f4f0;color:#ccc;'+wb+'">-</td>'; return; }
       const bg = getColor(v, useMin, useMax);
       const tc = textCol(v, useMin, useMax);
-      html += `<td class="cell" style="background:${bg};color:${tc};${wb}" data-v="${v}" data-row="${rowKey}" data-day="${day}">${fmtVal(v,viewMode)}</td>`;
+      html += '<td class="cell" style="background:'+bg+';color:'+tc+';'+wb+'" data-v="'+v+'" data-row="'+rowKey+'" data-day="'+day+'">'+fmtVal(v,viewMode)+'</td>';
     });
 
     const valid = rowVals.filter(v => v !== null);
@@ -299,13 +294,12 @@ function render() {
       const avg = Math.round(valid.reduce((a,b)=>a+b,0)/valid.length);
       const longPct = Math.round(valid.filter(v=>v>0).length/valid.length*100);
       const pctClass = longPct >= 50 ? "up" : "down";
-      const pctLabel = longPct >= 50 ? `▲${longPct}%` : `▼${100-longPct}%`;
+      const pctLabel = longPct >= 50 ? "+"+longPct+"%" : "-"+(100-longPct)+"%";
       const avgBg = getColor(avg, useMin, useMax);
       const avgTc = textCol(avg, useMin, useMax);
-      html += `<td class="avg-cell" style="background:${avgBg};color:${avgTc}" data-v="${avg}" data-row="${rowKey}" data-day="avg" data-long="${longPct}">
-        <div class="avg-inner"><span>${fmtVal(avg,viewMode)}</span><span class="avg-pct ${pctClass}">${pctLabel}</span></div></td>`;
+      html += '<td class="avg-cell" style="background:'+avgBg+';color:'+avgTc+'" data-v="'+avg+'" data-row="'+rowKey+'" data-day="avg" data-long="'+longPct+'"><div class="avg-inner"><span>'+fmtVal(avg,viewMode)+'</span><span class="avg-pct '+pctClass+'">'+pctLabel+'</span></div></td>';
     } else {
-      html += `<td class="avg-cell" style="background:#f0ede8;color:#ccc">—</td>`;
+      html += '<td class="avg-cell" style="background:#f0ede8;color:#ccc">-</td>';
     }
     html += "</tr>";
   });
@@ -316,7 +310,30 @@ function render() {
   document.getElementById("tableOuter").querySelectorAll("td[data-v]").forEach(td => {
     td.addEventListener("mousemove", e => {
       const v = parseFloat(td.dataset.v);
-      const [hr, qr] = td.dataset.row.split("-");
+      const parts = td.dataset.row.split("-");
+      const hr = parts[0], qr = parts[1];
       const day = td.dataset.day;
-      const dir = v > 0 ? "▲ Long" : v < 0 ? "▼ Short" : "— Balanced";
-      const dc  = v > 0 ? "#1a7a3a" : v
+      const dir = v > 0 ? "Long" : v < 0 ? "Short" : "Balanced";
+      const dc  = v > 0 ? "#1a7a3a" : v < 0 ? "#b22222" : "#888";
+      const label = day === "avg"
+        ? hr+":"+QTR_MIN[qr]+" - Average"
+        : currentMonth+"-"+String(day).padStart(2,"0")+" "+getDOW(currentMonth,Number(day))+" "+hr+":"+QTR_MIN[qr];
+      tooltip.style.display = "block";
+      tooltip.style.left = (e.clientX+14)+"px";
+      tooltip.style.top  = (e.clientY-40)+"px";
+      tooltip.innerHTML = "<b>"+label+"</b><br><span style=\"color:"+dc+";font-weight:600\">"+dir+": "+(v>0?"+":"")+v+" MW</span>";
+    });
+    td.addEventListener("mouseleave", () => { tooltip.style.display = "none"; });
+  });
+}
+
+document.getElementById("scaleMode").addEventListener("change", render);
+document.getElementById("viewMode").addEventListener("change", render);
+
+buildMonthTabs();
+initDayFilter();
+buildStats();
+render();
+</script>
+</body>
+</html>
