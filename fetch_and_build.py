@@ -53,7 +53,7 @@ def build_json(df):
 
     # Datum DD.MM.YYYY → parse
     df = df.copy()
-    df["date_parsed"] = pd.to_datetime(df["Datum"], dayfirst=True)
+    df["date_parsed"] = pd.to_datetime(df["Datum"], format="%d.%m.%Y")
     df["month"]  = df["date_parsed"].dt.month
     df["year"]   = df["date_parsed"].dt.year
     df["day"]    = df["date_parsed"].dt.day
@@ -61,7 +61,7 @@ def build_json(df):
     def quarter(von):
         mins = von.split(":")[1]
         return {"00":"Q1","15":"Q2","30":"Q3","45":"Q4"}.get(mins, "Q1")
-
+    df["Deutschland"] = pd.to_numeric(df["Deutschland"], errors="coerce")
     df["quarter"] = df["von"].apply(quarter)
     df["hour"]    = df["von"].apply(lambda x: int(x.split(":")[0]))
     df["key"]     = df["hour"].apply(lambda h: f"{h:02d}") + "-" + df["quarter"]
