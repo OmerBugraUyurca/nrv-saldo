@@ -103,7 +103,7 @@ if __name__ == "__main__":
 
     # Son 3 günü çek (overlap için)
     today     = date.today()
-    date_from = (today - timedelta(days=3)).strftime("%Y-%m-%d")
+    date_from = today.replace(day=1).strftime("%Y-%m-%d")
     date_to   = today.strftime("%Y-%m-%d")
 
     new_df = fetch_nrv(date_from, date_to, token)
