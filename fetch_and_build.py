@@ -47,21 +47,29 @@ def update_csv(new_df):
     print(f"CSV: {len(combined)} satir")
     return combined
 
-# ---------- 4. JSON uret (gun bazli: YYYY-MM-DD -> HH-Qx -> deger) ----------
+# ---------- 4. JSON uret (Almanya saatine cevrilmis) ----------
 def build_json(df):
     os.makedirs("data", exist_ok=True)
     df = df.copy()
-    df["date_parsed"] = pd.to_datetime(df["Datum"], format="%d.%m.%Y")
+
+    # UTC zaman damgasi olustur: Datum (DD.MM.YYYY) + von (HH:MM)
+    dt_str = df["Datum"] + " " + df["von"]
+    ts_utc = pd.to_datetime(dt_str, format="%d.%m.%Y %H:%M", utc=True)
+
+    # Almanya saatine cevir (yaz/kis otomatik)
+    ts_local = ts_utc.dt.tz_convert("Europe/Berlin")
+
     df["Deutschland"] = pd.to_numeric(df["Deutschland"], errors="coerce")
+    df["local_dt"]    = ts_local
+    df["date_str"]    = ts_local.dt.strftime("%Y-%m-%d")
+    df["hour"]        = ts_local.dt.hour
+    df["minute"]      = ts_local.dt.minute
 
-    def quarter(von):
-        mins = von.split(":")[1]
-        return {"00":"Q1","15":"Q2","30":"Q3","45":"Q4"}.get(mins, "Q1")
+    def quarter(minute):
+        return {0:"Q1", 15:"Q2", 30:"Q3", 45:"Q4"}.get(minute, "Q1")
 
-    df["quarter"]  = df["von"].apply(quarter)
-    df["hour"]     = df["von"].apply(lambda x: int(x.split(":")[0]))
-    df["key"]      = df["hour"].apply(lambda h: f"{h:02d}") + "-" + df["quarter"]
-    df["date_str"] = df["date_parsed"].dt.strftime("%Y-%m-%d")
+    df["quarter"] = df["minute"].apply(quarter)
+    df["key"]     = df["hour"].apply(lambda h: f"{h:02d}") + "-" + df["quarter"]
 
     # date_str -> { "HH-Qx": value }
     result = defaultdict(dict)
@@ -73,7 +81,7 @@ def build_json(df):
     result = dict(sorted(result.items()))
     with open("data/nrv_data.json", "w") as f:
         json.dump(result, f)
-    print(f"JSON: {len(result)} gun")
+    print(f"JSON: {len(result)} gun (Almanya saati)")
     return result
 
 # ---------- 5. HTML uret ----------
@@ -98,9 +106,10 @@ if __name__ == "__main__":
     token = get_token()
     print("Token OK")
 
+    # Bu ayin basindan bugune (1 gun fazla cek, UTC->local kaymasi icin)
     today     = date.today()
     date_from = today.replace(day=1).strftime("%Y-%m-%d")
-    date_to   = today.strftime("%Y-%m-%d")
+    date_to   = (today + timedelta(days=1)).strftime("%Y-%m-%d")
 
     new_df = fetch_nrv(date_from, date_to, token)
     print(f"Cekilen: {len(new_df)} satir")
