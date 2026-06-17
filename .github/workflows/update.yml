@@ -25,7 +25,14 @@ jobs:
         env:
           NTZ_CLIENT_ID:     ${{ secrets.NTZ_CLIENT_ID }}
           NTZ_CLIENT_SECRET: ${{ secrets.NTZ_CLIENT_SECRET }}
-        run: python fetch_and_build.py
+        run: |
+          cd $GITHUB_WORKSPACE
+          python fetch_and_build.py
+          echo "--- index.html ilk 5 satir ---"
+          head -5 index.html
+          echo "--- ALL_DATA kontrol ---"
+          grep -c "ALL_DATA" index.html || echo "ALL_DATA YOK!"
+          grep -c "__DATA_JSON__" index.html && echo "PLACEHOLDER KALDI!" || echo "placeholder yok, iyi"
 
       - name: Commit and push
         run: |
