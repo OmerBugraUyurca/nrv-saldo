@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Germany NRV Balance</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f4f0; color: #1a1a1a; padding: 20px; }
+  h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { font-size: 12px; color: #888; margin-bottom: 16px; }
+  .updated { font-size: 11px; color: #aaa; margin-bottom: 16px; }
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-bottom: 14px; }
+  .ctrl-group { display: flex; align-items: center; gap: 6px; }
+  .ctrl-group label { font-size: 12px; color: #555; }
+  select { font-size: 12px; padding: 4px 8px; border: 1px solid #ccc; border-radius: 5px; background: #fff; cursor: pointer; }
+  .legend-wrap { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+  .grad { width: 180px; height: 10px; border-radius: 3px; background: linear-gradient(to right, #b22222, #e8a0a0, #f5f0ee, #a0d4b0, #1a7a3a); }
+  .legend-wrap span { font-size: 11px; color: #666; }
+  .month-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .month-btn { font-size: 12px; font-weight: 600; padding: 4px 12px; border: 1px solid #ccc; border-radius: 5px; background: #fff; cursor: pointer; color: #555; }
+  .month-btn.active { background: #3266ad; color: #fff; border-color: #3266ad; }
+  .day-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 12px; }
+  .df-btn { font-size: 11px; font-weight: 600; padding: 3px 8px; border: 1px solid #ccc; border-radius: 4px; background: #fff; cursor: pointer; color: #555; }
+  .df-btn.active { background: #3266ad; color: #fff; border-color: #3266ad; }
+  .df-btn.df-special { background: #f7f5f1; border-color: #bbb; color: #333; }
+  .df-btn.df-special:hover { background: #e8e4dc; }
+  .df-sep { width: 1px; height: 20px; background: #ddd; margin: 0 4px; display: inline-block; }
+  .table-outer { overflow: auto; max-height: 80vh; border: 1px solid #ddd; border-radius: 8px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+  table { border-collapse: collapse; font-size: 11px; white-space: nowrap; }
+  th, td { padding: 0; border: 0; }
+  .th-corner { position: sticky; left: 0; top: 0; z-index: 5; background: #f0ede8; padding: 5px 10px; font-size: 10px; color: #888; border-right: 1px solid #d5d2cc; border-bottom: 1px solid #d5d2cc; min-width: 90px; }
+  .th-day { position: sticky; top: 0; z-index: 3; background: #f0ede8; padding: 5px 6px; text-align: center; font-weight: 600; font-size: 11px; color: #444; border-bottom: 1px solid #d5d2cc; min-width: 38px; }
+  .th-day.weekend { color: #3266ad; background: #eaf0fb; }
+  .th-row { position: sticky; left: 0; z-index: 2; background: #f7f5f1; padding: 2px 8px; border-right: 1px solid #d5d2cc; font-size: 10px; line-height: 1.3; min-width: 90px; }
+  .th-row .hour { font-weight: 600; color: #222; }
+  .th-row .qtr { color: #999; margin-left: 3px; }
+  td.cell { text-align: center; padding: 2px 2px; font-size: 9.5px; font-weight: 600; min-width: 38px; height: 19px; cursor: default; }
+  td.cell:hover { outline: 2px solid #333; outline-offset: -1px; position: relative; z-index: 1; }
+  .th-avg { position: sticky; top: 0; right: 0; z-index: 4; background: #e8e4dc; padding: 5px 6px; text-align: center; font-weight: 700; font-size: 11px; color: #333; border-bottom: 1px solid #d5d2cc; border-left: 2px solid #bbb; min-width: 90px; }
+  td.avg-cell { position: sticky; right: 0; z-index: 1; padding: 1px 4px; font-size: 9.5px; font-weight: 700; min-width: 90px; height: 19px; border-left: 2px solid #bbb; display: table-cell; vertical-align: middle; }
+  .avg-inner { display: flex; align-items: center; justify-content: space-between; gap: 3px; }
+  .avg-pct { font-size: 8.5px; font-weight: 700; padding: 1px 4px; border-radius: 3px; }
+  .avg-pct.up { background: rgba(26,122,58,0.18); color: #145a2d; }
+  .avg-pct.down { background: rgba(178,34,34,0.15); color: #8b1a1a; }
+  .hour-sep td, .hour-sep th { border-top: 1px solid #ccc; }
+  .tooltip { position: fixed; background: #fff; border: 1px solid #ccc; border-radius: 6px; padding: 7px 11px; font-size: 11px; color: #222; pointer-events: none; display: none; z-index: 9999; box-shadow: 0 3px 10px rgba(0,0,0,0.12); line-height: 1.6; }
+  .stat-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+  .stat { background: #fff; border: 1px solid #ddd; border-radius: 7px; padding: 8px 14px; min-width: 110px; }
+  .stat-label { font-size: 10px; color: #888; margin-bottom: 2px; }
+  .stat-value { font-size: 18px; font-weight: 600; color: #222; }
+  .stat-sub { font-size: 10px; color: #aaa; }
+</style>
+</head>
+<body>
+<h1>Germany NRV Balance (System Direction)</h1>
+<p class="subtitle">15-min quarters per hour × day | Unit: MW | Positive = Long, Negative = Short</p>
+<p class="updated">Last updated: 2026-06-17</p>
+
+<div class="stat-row" id="statRow"></div>
+
+<div class="month-tabs" id="monthTabs"></div>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <label>Color scale:</label>
+    <select id="scaleMode">
+      <option value="global">Global</option>
+      <option value="sym500">±500 MW</option>
+      <option value="sym1000">±1000 MW</option>
+      <option value="row">Row-relative</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <label>Display:</label>
+    <select id="viewMode">
+      <option value="value">Value (MW)</option>
+      <option value="sign">Direction (+/−)</option>
+      <option value="abs">Absolute</option>
+    </select>
+  </div>
+</div>
+
+<div class="day-filter" id="dayFilter">
+  <span style="font-size:12px;color:#555;margin-right:6px">Days:</span>
+  <button class="df-btn df-special" data-action="all">All</button>
+  <button class="df-btn df-special" data-action="weekdays">Weekdays</button>
+  <button class="df-btn df-special" data-action="weekends">Weekends</button>
+  <span class="df-sep"></span>
+</div>
+
+<div class="legend-wrap">
+  <span>Short (−)</span>
+  <div class="grad"></div>
+  <span>(+) Long</span>
+</div>
+
+<div class="table-outer" id="tableOuter"></div>
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+const ALL_DATA = {"2026-06": {"00-Q1": {"14": -485.0, "15": 385.8, "16": 215.4}, "00-Q2": {"14": -537.1, "15": 266.6, "16": 47.7}, "00-Q3": {"14": -790.1, "15": 86.4, "16": -27.6}, "00-Q4": {"14": -735.0, "15": 32.4, "16": -91.7}, "01-Q1": {"14": -355.4, "15": 321.5, "16": 86.4}, "01-Q2": {"14": 13.9, "15": -76.1, "16": -63.3}, "01-Q3": {"14": 129.2, "15": -286.7, "16": -12.5}, "01-Q4": {"14": 117.0, "15": -257.9, "16": 100.0}, "02-Q1": {"14": -419.6, "15": -379.4, "16": 239.9}, "02-Q2": {"14": -309.4, "15": -275.4, "16": 50.9}, "02-Q3": {"14": -339.2, "15": -181.4, "16": -202.1}, "02-Q4": {"14": -19.0, "15": -189.4, "16": -115.5}, "03-Q1": {"14": -172.4, "15": 244.9, "16": 106.9}, "03-Q2": {"14": 0.2, "15": 449.6, "16": -201.2}, "03-Q3": {"14": -19.8, "15": 252.2, "16": -171.0}, "03-Q4": {"14": 271.3, "15": 304.7, "16": -125.3}, "04-Q1": {"14": -253.3, "15": 129.4, "16": -430.8}, "04-Q2": {"14": -582.0, "15": -195.7, "16": -183.5}, "04-Q3": {"14": -66.7, "15": 121.8, "16": 233.5}, "04-Q4": {"14": 138.8, "15": 358.5, "16": 570.6}, "05-Q1": {"14": -452.0, "15": 487.7, "16": -35.7}, "05-Q2": {"14": 19.4, "15": 863.4, "16": 9.2}, "05-Q3": {"14": 520.5, "15": 676.9, "16": 223.2}, "05-Q4": {"14": 511.9, "15": 126.1, "16": 135.3}, "06-Q1": {"14": 422.2, "15": 382.6, "16": 177.7}, "06-Q2": {"14": 70.9, "15": 637.0, "16": -7.6}, "06-Q3": {"14": 77.0, "15": -188.8, "16": 325.2}, "06-Q4": {"14": 17.4, "15": 147.6, "16": 708.4}, "07-Q1": {"14": -65.7, "15": 756.6, "16": 174.9}, "07-Q2": {"14": -348.5, "15": 761.7, "16": 270.2}, "07-Q3": {"14": -422.6, "15": 1230.4, "16": -158.7}, "07-Q4": {"14": -202.4, "15": 1468.9, "16": -122.6}, "08-Q1": {"14": 222.0, "15": 1394.0, "16": -87.2}, "08-Q2": {"14": -258.6, "15": 1339.6, "16": 593.4}, "08-Q3": {"14": -328.2, "15": 1311.2, "16": 274.4}, "08-Q4": {"14": -29.5, "15": 1292.4, "16": 396.7}, "09-Q1": {"14": -380.1, "15": 1.6, "16": -105.8}, "09-Q2": {"14": -101.7, "15": 204.6, "16": -255.3}, "09-Q3": {"14": -25.4, "15": 842.9, "16": -161.2}, "09-Q4": {"14": -364.9, "15": 575.4, "16": -197.3}, "10-Q1": {"14": -561.6, "15": 7.3, "16": 255.0}, "10-Q2": {"14": -831.3, "15": 86.1, "16": 119.5}, "10-Q3": {"14": -60.2, "15": -556.7, "16": -354.2}, "10-Q4": {"14": -148.6, "15": -673.2, "16": -400.7}, "11-Q1": {"14": -175.5, "15": -817.3, "16": -631.6}, "11-Q2": {"14": -37.3, "15": -396.1, "16": -481.3}, "11-Q3": {"14": -614.9, "15": -470.0, "16": -408.0}, "11-Q4": {"14": -742.1, "15": -402.6, "16": -275.3}, "12-Q1": {"14": 48.7, "15": 106.2, "16": -349.6}, "12-Q2": {"14": -286.9, "15": -478.4, "16": -898.2}, "12-Q3": {"14": -237.7, "15": -768.7, "16": -816.3}, "12-Q4": {"14": -171.4, "15": -507.9, "16": -247.4}, "13-Q1": {"14": -97.9, "15": -297.4, "16": 482.7}, "13-Q2": {"14": 104.2, "15": -128.0, "16": 125.5}, "13-Q3": {"14": -10.8, "15": -324.4, "16": 824.4}, "13-Q4": {"14": 381.0, "15": -434.3, "16": 534.7}, "14-Q1": {"14": -21.3, "15": -434.2, "16": 583.5}, "14-Q2": {"14": -359.0, "15": -403.1, "16": -3.3}, "14-Q3": {"14": 134.8, "15": -606.1, "16": -361.0}, "14-Q4": {"14": 313.1, "15": -330.7, "16": 259.3}, "15-Q1": {"14": 404.8, "15": 295.4, "16": -166.0}, "15-Q2": {"14": 21.0, "15": 82.8, "16": 594.0}, "15-Q3": {"14": 442.4, "15": -619.6, "16": 374.0}, "15-Q4": {"14": 48.2, "15": -454.7, "16": 215.8}, "16-Q1": {"14": 313.2, "15": 628.4, "16": -763.6}, "16-Q2": {"14": 236.0, "15": 798.7, "16": -870.3}, "16-Q3": {"14": 1149.9, "15": -625.9, "16": 46.6}, "16-Q4": {"14": 49.8, "15": -266.7, "16": 307.6}, "17-Q1": {"14": 373.2, "15": 253.6, "16": 13.4}, "17-Q2": {"14": 227.7, "15": 257.3, "16": 445.7}, "17-Q3": {"14": 357.0, "15": -642.0, "16": -348.7}, "17-Q4": {"14": -389.2, "15": -778.6, "16": -39.3}, "18-Q1": {"14": 89.1, "15": 199.8, "16": -42.3}, "18-Q2": {"14": -603.7, "15": 756.5, "16": -28.8}, "18-Q3": {"14": -808.8, "15": 1130.3, "16": -16.1}, "18-Q4": {"14": -1159.2, "15": 867.7, "16": 591.9}, "19-Q1": {"14": -146.8, "15": 290.7, "16": 137.5}, "19-Q2": {"14": 68.1, "15": 289.6, "16": -106.7}, "19-Q3": {"14": 423.3, "15": -151.7, "16": -325.1}, "19-Q4": {"14": 643.3, "15": 44.4, "16": 25.3}, "20-Q1": {"14": 102.8, "15": 170.6, "16": -209.5}, "20-Q2": {"14": 589.9, "15": 228.5, "16": -171.4}, "20-Q3": {"14": 317.7, "15": 309.8, "16": -35.1}, "20-Q4": {"14": 126.5, "15": -143.9, "16": -31.8}, "21-Q1": {"14": -515.1, "15": -96.0, "16": -10.8}, "21-Q2": {"14": -293.5, "15": -652.5, "16": -105.4}, "21-Q3": {"14": 295.8, "15": -574.1, "16": -290.7}, "21-Q4": {"14": 351.3, "15": 61.7, "16": -67.2}, "22-Q1": {"14": -165.9, "15": 198.3, "16": 83.0}, "22-Q2": {"14": -385.6, "15": -371.7, "16": 89.6}, "22-Q3": {"14": 318.0, "15": -294.3, "16": -21.9}, "22-Q4": {"14": 66.3, "15": -99.6, "16": 217.2}, "23-Q1": {"14": 164.6, "15": -363.4, "16": 279.4}, "23-Q2": {"14": 183.7, "15": 105.2, "16": 128.9}, "23-Q3": {"14": 150.8, "15": 245.2, "16": 316.8}, "23-Q4": {"14": 145.5, "15": 69.5, "16": 25.8}}};
+let currentMonth = "2026-06";
+
+const ROWS = [];
+for (let h = 0; h < 24; h++)
+  for (const q of ["Q1","Q2","Q3","Q4"])
+    ROWS.push(`${String(h).padStart(2,"0")}-${q}`);
+
+const QTR_MIN = {Q1:"00",Q2:"15",Q3:"30",Q4:"45"};
+
+function getDaysInMonth(ym) {
+  const [y, m] = ym.split("-").map(Number);
+  return new Date(y, m, 0).getDate();
+}
+
+function getWeekends(ym) {
+  const [y, m] = ym.split("-").map(Number);
+  const wk = new Set();
+  for (let d = 1; d <= getDaysInMonth(ym); d++) {
+    const dow = new Date(y, m-1, d).getDay();
+    if (dow === 0 || dow === 6) wk.add(d);
+  }
+  return wk;
+}
+
+function getDOW(ym, d) {
+  const [y, m] = ym.split("-").map(Number);
+  return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][new Date(y,m-1,d).getDay()];
+}
+
+const tooltip = document.getElementById("tooltip");
+let activeDays = new Set();
+
+// Month tabs
+function buildMonthTabs() {
+  const el = document.getElementById("monthTabs");
+  el.innerHTML = "";
+  Object.keys(ALL_DATA).sort().forEach(ym => {
+    const btn = document.createElement("button");
+    btn.className = "month-btn" + (ym === currentMonth ? " active" : "");
+    btn.textContent = ym;
+    btn.addEventListener("click", () => {
+      currentMonth = ym;
+      el.querySelectorAll(".month-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      initDayFilter();
+      buildStats();
+      render();
+    });
+    el.appendChild(btn);
+  });
+}
+
+// Day filter
+function initDayFilter() {
+  const raw = ALL_DATA[currentMonth] || {};
+  const totalDays = getDaysInMonth(currentMonth);
+  const DAYS = Array.from({length: totalDays}, (_, i) => i + 1);
+  const WEEKENDS = getWeekends(currentMonth);
+  activeDays = new Set(DAYS);
+
+  const container = document.getElementById("dayFilter");
+  container.querySelectorAll(".df-btn[data-day]").forEach(b => b.remove());
+  const sep = container.querySelector(".df-sep");
+
+  DAYS.forEach(d => {
+    const btn = document.createElement("button");
+    btn.className = "df-btn active";
+    btn.dataset.day = d;
+    btn.textContent = d + " " + getDOW(currentMonth, d);
+    if (WEEKENDS.has(d)) btn.style.color = "#3266ad";
+    btn.addEventListener("click", () => {
+      if (activeDays.has(d)) {
+        if (activeDays.size > 1) { activeDays.delete(d); btn.classList.remove("active"); }
+      } else {
+        activeDays.add(d); btn.classList.add("active");
+      }
+      buildStats(); render();
+    });
+    container.insertBefore(btn, sep.nextSibling);
+  });
+
+  container.querySelector("[data-action=all]").onclick = () => {
+    activeDays = new Set(DAYS);
+    container.querySelectorAll(".df-btn[data-day]").forEach(b => b.classList.add("active"));
+    buildStats(); render();
+  };
+  container.querySelector("[data-action=weekdays]").onclick = () => {
+    activeDays = new Set(DAYS.filter(d => !WEEKENDS.has(d)));
+    container.querySelectorAll(".df-btn[data-day]").forEach(b =>
+      b.classList.toggle("active", activeDays.has(+b.dataset.day)));
+    buildStats(); render();
+  };
+  container.querySelector("[data-action=weekends]").onclick = () => {
+    activeDays = new Set(DAYS.filter(d => WEEKENDS.has(d)));
+    container.querySelectorAll(".df-btn[data-day]").forEach(b =>
+      b.classList.toggle("active", activeDays.has(+b.dataset.day)));
+    buildStats(); render();
+  };
+}
+
+function buildStats() {
+  const raw = ALL_DATA[currentMonth] || {};
+  const allVals = [];
+  ROWS.forEach(r => {
+    activeDays.forEach(d => {
+      const v = raw[r]?.[String(d)];
+      if (v !== undefined) allVals.push(v);
+    });
+  });
+  if (!allVals.length) return;
+  const pos = allVals.filter(v => v > 0).length;
+  const neg = allVals.filter(v => v < 0).length;
+  const avg = Math.round(allVals.reduce((a,b)=>a+b,0)/allVals.length);
+  const stats = [
+    {label:"Total quarters", value: allVals.length, sub:""},
+    {label:"Long (positive)", value: pos, sub: (pos/allVals.length*100).toFixed(1)+"%"},
+    {label:"Short (negative)", value: neg, sub: (neg/allVals.length*100).toFixed(1)+"%"},
+    {label:"Average", value: (avg>0?"+":"")+avg+" MW", sub:""},
+    {label:"Min", value: Math.min(...allVals)+" MW", sub:""},
+    {label:"Max", value: Math.max(...allVals)+" MW", sub:""},
+  ];
+  document.getElementById("statRow").innerHTML = stats.map(s =>
+    `<div class="stat"><div class="stat-label">${s.label}</div><div class="stat-value">${s.value}</div><div class="stat-sub">${s.sub}</div></div>`
+  ).join("");
+}
+
+function getColor(v, mn, mx) {
+  if (v === 0) return "#f0ede8";
+  if (v > 0) {
+    const t = Math.min(v/mx, 1);
+    return `rgb(${Math.round(220-t*110)},${Math.round(235-t*50)},${Math.round(220-t*140)})`;
+  } else {
+    const t = Math.min(Math.abs(v)/Math.abs(mn), 1);
+    return `rgb(${Math.round(220+t*80)},${Math.round(220-t*150)},${Math.round(220-t*150)})`;
+  }
+}
+
+function textCol(v, mn, mx) {
+  return (v >= 0 ? v/mx : Math.abs(v)/Math.abs(mn)) > 0.55 ? "#fff" : "#333";
+}
+
+function fmtVal(v, mode) {
+  if (mode === "sign") return v > 0 ? "+" : v < 0 ? "−" : "0";
+  if (mode === "abs") return Math.abs(v) >= 1000 ? (Math.abs(v)/1000).toFixed(1)+"k" : Math.abs(v).toString();
+  if (Math.abs(v) >= 1000) return (v>0?"+":"")+(v/1000).toFixed(1)+"k";
+  return (v>0?"+":"")+v;
+}
+
+function render() {
+  const raw = ALL_DATA[currentMonth] || {};
+  const WEEKENDS = getWeekends(currentMonth);
+  const visibleDays = Array.from(activeDays).sort((a,b)=>a-b);
+  const scaleMode = document.getElementById("scaleMode").value;
+  const viewMode  = document.getElementById("viewMode").value;
+
+  let gMin = Infinity, gMax = -Infinity;
+  ROWS.forEach(r => visibleDays.forEach(d => {
+    const v = raw[r]?.[String(d)];
+    if (v !== undefined) { gMin = Math.min(gMin,v); gMax = Math.max(gMax,v); }
+  }));
+  if (scaleMode === "sym500")  { gMin = -500;  gMax = 500; }
+  if (scaleMode === "sym1000") { gMin = -1000; gMax = 1000; }
+
+  let html = "<table><thead><tr>";
+  html += `<th class="th-corner">Hour / Qtr</th>`;
+  visibleDays.forEach(d => {
+    const wk = WEEKENDS.has(d) ? " weekend" : "";
+    html += `<th class="th-day${wk}"><div>${d}</div><div style="font-size:9px;font-weight:400;color:#aaa">${getDOW(currentMonth,d)}</div></th>`;
+  });
+  html += `<th class="th-avg"><div style="display:flex;gap:6px;justify-content:center">Avg MW <span style="font-size:9px;color:#999;font-weight:400">| Long%</span></div></th>`;
+  html += "</tr></thead><tbody>";
+
+  ROWS.forEach(rowKey => {
+    const [hr, qr] = rowKey.split("-");
+    const isQ1 = qr === "Q1";
+    const rowVals = visibleDays.map(d => raw[rowKey]?.[String(d)] ?? null);
+
+    let rMin = Infinity, rMax = -Infinity;
+    if (scaleMode === "row") rowVals.forEach(v => { if(v!==null){rMin=Math.min(rMin,v);rMax=Math.max(rMax,v);} });
+    const useMin = scaleMode === "row" ? rMin : gMin;
+    const useMax = scaleMode === "row" ? rMax : gMax;
+
+    html += `<tr${isQ1 ? ' class="hour-sep"' : ""}>`;
+    html += `<th class="th-row"><span class="hour">${hr}:00</span><span class="qtr">${qr}</span></th>`;
+
+    rowVals.forEach((v, di) => {
+      const day = visibleDays[di];
+      const wb = WEEKENDS.has(day) ? "border-left:2px solid #c0d4f0;" : "";
+      if (v === null) { html += `<td class="cell" style="background:#f5f4f0;color:#ccc;${wb}">—</td>`; return; }
+      const bg = getColor(v, useMin, useMax);
+      const tc = textCol(v, useMin, useMax);
+      html += `<td class="cell" style="background:${bg};color:${tc};${wb}" data-v="${v}" data-row="${rowKey}" data-day="${day}">${fmtVal(v,viewMode)}</td>`;
+    });
+
+    const valid = rowVals.filter(v => v !== null);
+    if (valid.length) {
+      const avg = Math.round(valid.reduce((a,b)=>a+b,0)/valid.length);
+      const longPct = Math.round(valid.filter(v=>v>0).length/valid.length*100);
+      const pctClass = longPct >= 50 ? "up" : "down";
+      const pctLabel = longPct >= 50 ? `▲${longPct}%` : `▼${100-longPct}%`;
+      const avgBg = getColor(avg, useMin, useMax);
+      const avgTc = textCol(avg, useMin, useMax);
+      html += `<td class="avg-cell" style="background:${avgBg};color:${avgTc}" data-v="${avg}" data-row="${rowKey}" data-day="avg" data-long="${longPct}">
+        <div class="avg-inner"><span>${fmtVal(avg,viewMode)}</span><span class="avg-pct ${pctClass}">${pctLabel}</span></div></td>`;
+    } else {
+      html += `<td class="avg-cell" style="background:#f0ede8;color:#ccc">—</td>`;
+    }
+    html += "</tr>";
+  });
+
+  html += "</tbody></table>";
+  document.getElementById("tableOuter").innerHTML = html;
+
+  document.getElementById("tableOuter").querySelectorAll("td[data-v]").forEach(td => {
+    td.addEventListener("mousemove", e => {
+      const v = parseFloat(td.dataset.v);
+      const [hr, qr] = td.dataset.row.split("-");
+      const day = td.dataset.day;
+      const dir = v > 0 ? "▲ Long" : v < 0 ? "▼ Short" : "— Balanced";
+      const dc  = v > 0 ? "#1a7a3a" : v
