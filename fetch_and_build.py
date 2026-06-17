@@ -109,7 +109,7 @@ if __name__ == "__main__":
     # Bu ayin basindan bugune (1 gun fazla cek, UTC->local kaymasi icin)
     today     = date.today()
     date_from = today.replace(day=1).strftime("%Y-%m-%d")
-    date_to   = (today + timedelta(days=1)).strftime("%Y-%m-%d")
+    date_to   = today.strftime("%Y-%m-%d")
 
     new_df = fetch_nrv(date_from, date_to, token)
     print(f"Cekilen: {len(new_df)} satir")
