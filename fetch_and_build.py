@@ -5,6 +5,7 @@ import os
 from io import StringIO
 from datetime import date, timedelta
 from collections import defaultdict
+from dateutil.relativedelta import relativedelta
 
 CLIENT_ID     = os.environ["NTZ_CLIENT_ID"]
 CLIENT_SECRET = os.environ["NTZ_CLIENT_SECRET"]
@@ -39,7 +40,7 @@ def update_csv(new_df):
     if os.path.exists(path):
         existing = pd.read_csv(path)
         combined = pd.concat([existing, new_df]).drop_duplicates(
-            subset=["Datum","von","bis"]
+            subset=["Datum","von","bis"], keep="last"
         )
     else:
         combined = new_df
@@ -52,15 +53,11 @@ def build_json(df):
     os.makedirs("data", exist_ok=True)
     df = df.copy()
 
-    # UTC zaman damgasi olustur: Datum (DD.MM.YYYY) + von (HH:MM)
     dt_str = df["Datum"] + " " + df["von"]
     ts_utc = pd.to_datetime(dt_str, format="%d.%m.%Y %H:%M", utc=True)
-
-    # Almanya saatine cevir (yaz/kis otomatik)
     ts_local = ts_utc.dt.tz_convert("Europe/Berlin")
 
     df["Deutschland"] = pd.to_numeric(df["Deutschland"], errors="coerce")
-    df["local_dt"]    = ts_local
     df["date_str"]    = ts_local.dt.strftime("%Y-%m-%d")
     df["hour"]        = ts_local.dt.hour
     df["minute"]      = ts_local.dt.minute
@@ -71,7 +68,6 @@ def build_json(df):
     df["quarter"] = df["minute"].apply(quarter)
     df["key"]     = df["hour"].apply(lambda h: f"{h:02d}") + "-" + df["quarter"]
 
-    # date_str -> { "HH-Qx": value }
     result = defaultdict(dict)
     for _, row in df.iterrows():
         val = row["Deutschland"]
@@ -95,7 +91,7 @@ def build_html(result):
     html = html.replace("__DATA_JSON__", json.dumps(result))
     html = html.replace("__FIRST_DATE__", first)
     html = html.replace("__LAST_DATE__", last)
-    html = html.replace("__UPDATED_AT__", date.today().strftime("%Y-%m-%d"))
+    html = html.replace("__UPDATED_AT__", pd.Timestamp.now(tz="Europe/Berlin").strftime("%Y-%m-%d %H:%M"))
 
     with open("index.html", "w") as f:
         f.write(html)
@@ -106,14 +102,35 @@ if __name__ == "__main__":
     token = get_token()
     print("Token OK")
 
-    # Bu ayin basindan bugune (1 gun fazla cek, UTC->local kaymasi icin)
-    today     = date.today()
-    date_from = today.replace(day=1).strftime("%Y-%m-%d")
-    date_to   = today.strftime("%Y-%m-%d")
+    today = date.today()
 
-    new_df = fetch_nrv(date_from, date_to, token)
-    print(f"Cekilen: {len(new_df)} satir")
+    # CSV varsa: sadece son 2 gunu cek (hizli guncelleme).
+    # CSV yoksa (ilk calisma): son 6 ayi cek.
+    csv_path = "data/nrv_saldo.csv"
+    if os.path.exists(csv_path):
+        date_from = (today - timedelta(days=2)).strftime("%Y-%m-%d")
+        date_to   = today.strftime("%Y-%m-%d")
+        print(f"Artimli cekim: {date_from} -> {date_to}")
+        new_df = fetch_nrv(date_from, date_to, token)
+    else:
+        # Ilk calisma: son 6 ay, aylik parcalar halinde
+        print("Ilk calisma: son 6 ay cekiliyor...")
+        start = today - relativedelta(months=6)
+        frames = []
+        cur = start.replace(day=1)
+        while cur <= today:
+            nxt = (cur + relativedelta(months=1))
+            chunk_to = min(nxt - timedelta(days=1), today)
+            try:
+                f = fetch_nrv(cur.strftime("%Y-%m-%d"), chunk_to.strftime("%Y-%m-%d"), token)
+                frames.append(f)
+                print(f"  {cur} -> {chunk_to}: {len(f)} satir")
+            except Exception as e:
+                print(f"  {cur} hata: {e}")
+            cur = nxt
+        new_df = pd.concat(frames) if frames else pd.DataFrame()
 
+    print(f"Cekilen toplam: {len(new_df)} satir")
     df = update_csv(new_df)
     result = build_json(df)
     build_html(result)
