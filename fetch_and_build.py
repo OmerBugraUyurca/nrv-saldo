@@ -115,7 +115,7 @@ def load_json(path):
     return {}
 
 # ---------- 6. HTML ----------
-def build_html(saldo, aep, id1, vwap):
+def build_html(saldo, aep, id1, id3, spot, vwap):
     dates = sorted(saldo.keys())
     first = dates[0] if dates else ""
     last  = dates[-1] if dates else ""
@@ -124,6 +124,8 @@ def build_html(saldo, aep, id1, vwap):
     html = html.replace("__DATA_JSON__", json.dumps(saldo))
     html = html.replace("__AEP_JSON__",  json.dumps(aep))
     html = html.replace("__ID1_JSON__",  json.dumps(id1))
+    html = html.replace("__ID3_JSON__",  json.dumps(id3))
+    html = html.replace("__SPOT_JSON__", json.dumps(spot))
     html = html.replace("__VWAP_JSON__", json.dumps(vwap))
     html = html.replace("__FIRST_DATE__", first)
     html = html.replace("__LAST_DATE__", last)
@@ -201,6 +203,8 @@ if __name__ == "__main__":
     # --- EQ: ID1 & VWAP ---
     id1  = load_json("data/id1_data.json")
     vwap = load_json("data/vwap_data.json")
+    id3  = load_json("data/id3_data.json")
+    spot = load_json("data/spot_data.json")
     if EQ_API_KEY:
         eq_from = start if first_run else (today - timedelta(days=2))
         eq_to   = today + timedelta(days=1)  # EQ end exclusive
@@ -216,10 +220,24 @@ if __name__ == "__main__":
             print(f"VWAP: +{len(vwap_new)} gun (toplam {len(vwap)})")
         except Exception as e:
             print("VWAP HATA (devam):", e)
+        try:
+            id3_new = fetch_eq_series("DE Price Intraday VWAP ID3 EUR/MWh EPEX 15min Actual", eq_from, eq_to)
+            id3 = merge_maps(id3, id3_new)
+            print(f"ID3: +{len(id3_new)} gun (toplam {len(id3)})")
+        except Exception as e:
+            print("ID3 HATA (devam):", e)
+        try:
+            spot_new = fetch_eq_series("DE Price Spot EUR/MWh EPEX 15min Actual", eq_from, eq_to)
+            spot = merge_maps(spot, spot_new)
+            print(f"SPOT: +{len(spot_new)} gun (toplam {len(spot)})")
+        except Exception as e:
+            print("SPOT HATA (devam):", e)
     else:
-        print("EQ_API_KEY yok, ID1/VWAP atlandi")
+        print("EQ_API_KEY yok, EQ serileri atlandi")
     with open("data/id1_data.json","w") as f: json.dump(id1, f)
     with open("data/vwap_data.json","w") as f: json.dump(vwap, f)
+    with open("data/id3_data.json","w") as f: json.dump(id3, f)
+    with open("data/spot_data.json","w") as f: json.dump(spot, f)
 
-    build_html(saldo, aep, id1, vwap)
+    build_html(saldo, aep, id1, id3, spot, vwap)
     print("Tamamlandi.")
