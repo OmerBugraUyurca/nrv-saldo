@@ -2,7 +2,7 @@ name: Update NRV Saldo
 
 on:
   schedule:
-    - cron: '*/15 * * * *'   # Her 15 dakikada bir
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -18,12 +18,13 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests pandas python-dateutil
+        run: pip install requests pandas python-dateutil energyquantified
 
       - name: Run fetch and build
         env:
           NTZ_CLIENT_ID:     ${{ secrets.NTZ_CLIENT_ID }}
           NTZ_CLIENT_SECRET: ${{ secrets.NTZ_CLIENT_SECRET }}
+          EQ_API_KEY:        ${{ secrets.EQ_API_KEY }}
         run: python fetch_and_build.py
 
       - name: Commit and push
