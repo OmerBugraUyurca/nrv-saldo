@@ -99,16 +99,6 @@
 
 <div class="controls">
   <div class="ctrl-group">
-    <label>Metric:</label>
-    <select id="metricMode">
-      <option value="saldo">NRV Saldo (MW)</option>
-      <option value="aep">AEP estimate (EUR/MWh)</option>
-      <option value="id1">ID1 VWAP (EUR/MWh)</option>
-      <option value="vwap">Intraday VWAP (EUR/MWh)</option>
-      <option value="pnl">Long P&amp;L = AEP - ID1 (EUR/MWh)</option>
-    </select>
-  </div>
-  <div class="ctrl-group">
     <label>Color scale:</label>
     <select id="scaleMode">
       <option value="global">Global</option>
@@ -141,7 +131,34 @@
   <span>(+) Short</span>
 </div>
 
-<div class="table-outer" id="tableOuter"></div>
+<div style="display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;">
+  <div style="flex:1 1 480px; min-width:420px;">
+    <div style="font-size:13px;font-weight:600;margin-bottom:6px;">NRV Saldo (MW)</div>
+    <div class="table-outer" id="tableOuter"></div>
+  </div>
+  <div style="flex:1 1 480px; min-width:420px;">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
+      <span style="font-size:13px;font-weight:600;">Spread:</span>
+      <select id="var1">
+        <option value="aep" selected>IMBALANCE (AEP)</option>
+        <option value="id1">ID1</option>
+        <option value="id3">ID3</option>
+        <option value="spot">SPOT</option>
+        <option value="vwap">VWAP</option>
+      </select>
+      <span style="font-weight:700;">-</span>
+      <select id="var2">
+        <option value="aep">IMBALANCE (AEP)</option>
+        <option value="id1" selected>ID1</option>
+        <option value="id3">ID3</option>
+        <option value="spot">SPOT</option>
+        <option value="vwap">VWAP</option>
+      </select>
+      <span style="font-size:11px;color:#888">EUR/MWh</span>
+    </div>
+    <div class="table-outer" id="spreadOuter"></div>
+  </div>
+</div>
 <div class="tooltip" id="tooltip"></div>
 
 <!-- ============ SIMILARITY PANEL ============ -->
@@ -153,6 +170,13 @@
       <div class="sim-window">
         <button class="win-btn active" data-win="2">Last 2 hours</button>
         <button class="win-btn" data-win="3">Last 3 hours</button>
+      </div>
+    </div>
+    <div class="ctrl-group">
+      <label>Forward window:</label>
+      <div class="sim-window">
+        <button class="fwd-btn active" data-fwd="2">+2 hours</button>
+        <button class="fwd-btn" data-fwd="4">+4 hours</button>
       </div>
     </div>
     <div class="ctrl-group">
@@ -178,6 +202,8 @@
 const ALL_DATA = __DATA_JSON__;
 const AEP_DATA  = __AEP_JSON__;
 const ID1_DATA  = __ID1_JSON__;
+const ID3_DATA  = __ID3_JSON__;
+const SPOT_DATA = __SPOT_JSON__;
 const VWAP_DATA = __VWAP_JSON__;
 const ALL_DATES = Object.keys(ALL_DATA).sort();
 
@@ -186,6 +212,8 @@ function metricVal(metric, ds, key) {
   if (metric === "aep")   return (AEP_DATA[ds]  && AEP_DATA[ds][key]  !== undefined) ? AEP_DATA[ds][key]  : null;
   if (metric === "id1")   return (ID1_DATA[ds]  && ID1_DATA[ds][key]  !== undefined) ? ID1_DATA[ds][key]  : null;
   if (metric === "vwap")  return (VWAP_DATA[ds] && VWAP_DATA[ds][key] !== undefined) ? VWAP_DATA[ds][key] : null;
+  if (metric === "id3")   return (ID3_DATA[ds]  && ID3_DATA[ds][key]  !== undefined) ? ID3_DATA[ds][key]  : null;
+  if (metric === "spot")  return (SPOT_DATA[ds] && SPOT_DATA[ds][key] !== undefined) ? SPOT_DATA[ds][key] : null;
   if (metric === "pnl") {
     const a = (AEP_DATA[ds] && AEP_DATA[ds][key] !== undefined) ? AEP_DATA[ds][key] : null;
     const i = (ID1_DATA[ds] && ID1_DATA[ds][key] !== undefined) ? ID1_DATA[ds][key] : null;
@@ -211,7 +239,33 @@ function dayNum(ds){ return Number(ds.split("-")[2]); }
 const tooltip = document.getElementById("tooltip");
 let activeDates = new Set();
 let highlightDate = null;   // benzerlik panelinden secilen gun
-let simWindow = 2;          // saat
+let simWindow = 2;          // saat (geriye)
+let fwdWindow = 2;          // saat (ileriye)
+
+function spreadValFor(v1, v2, ds, key){
+  const a = metricVal(v1, ds, key), b = metricVal(v2, ds, key);
+  if (a === null || b === null) return null;
+  return Math.round((a - b) * 100) / 100;
+}
+function shiftDateStr(ds, off){
+  const [y,m,d] = ds.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m-1, d + off));
+  return dt.toISOString().slice(0,10);
+}
+// Ileri pencere: icinde bulunulan ceyrekten saat sonuna kadar + sonraki N saat
+function forwardSpec(fwdHours){
+  const nb = nowBerlin();
+  const startIdx = nb.hour*4 + Math.floor(nb.minute/15);
+  const endIdx = (nb.hour + 1 + fwdHours)*4 - 1;
+  const items = [];
+  for(let i=startIdx; i<=endIdx; i++){
+    const off = Math.floor(i/96);
+    const idx = i % 96;
+    const h = Math.floor(idx/4), q = idx%4;
+    items.push({off: off, key: String(h).padStart(2,"0")+"-Q"+(q+1)});
+  }
+  return items;
+}
 
 function datesInRange() {
   const s = document.getElementById("startDate").value;
@@ -235,13 +289,13 @@ function buildDayFilter() {
       if (activeDates.has(ds)) {
         if (activeDates.size > 1) { activeDates.delete(ds); btn.classList.remove("active"); btn.style.color = isWeekend(ds)?"#3266ad":"#555"; }
       } else { activeDates.add(ds); btn.classList.add("active"); if(isWeekend(ds)) btn.style.color="#fff"; }
-      buildStats(); render();
+      buildStats(); render(); renderSpread();
     });
     container.insertBefore(btn, sep.nextSibling);
   });
-  container.querySelector("[data-action=all]").onclick = () => { resetActiveToRange(); buildDayFilter(); buildStats(); render(); };
-  container.querySelector("[data-action=weekdays]").onclick = () => { activeDates = new Set(datesInRange().filter(d=>!isWeekend(d))); buildDayFilter(); buildStats(); render(); };
-  container.querySelector("[data-action=weekends]").onclick = () => { activeDates = new Set(datesInRange().filter(d=>isWeekend(d))); buildDayFilter(); buildStats(); render(); };
+  container.querySelector("[data-action=all]").onclick = () => { resetActiveToRange(); buildDayFilter(); buildStats(); render(); renderSpread(); };
+  container.querySelector("[data-action=weekdays]").onclick = () => { activeDates = new Set(datesInRange().filter(d=>!isWeekend(d))); buildDayFilter(); buildStats(); render(); renderSpread(); };
+  container.querySelector("[data-action=weekends]").onclick = () => { activeDates = new Set(datesInRange().filter(d=>isWeekend(d))); buildDayFilter(); buildStats(); render(); renderSpread(); };
 }
 
 // ---------- Ust istatistikler ----------
@@ -287,7 +341,7 @@ function render() {
   const viewMode  = document.getElementById("viewMode").value;
   if (!dates.length){ document.getElementById("tableOuter").innerHTML='<div class="empty-msg">No dates selected.</div>'; return; }
 
-  const metric = document.getElementById("metricMode").value;
+  const metric = "saldo";
   let gMin=Infinity, gMax=-Infinity;
   ROWS.forEach(r=>dates.forEach(ds=>{ const v=metricVal(metric,ds,r); if(v!==null){gMin=Math.min(gMin,v);gMax=Math.max(gMax,v);} }));
   if(scaleMode==="sym500"){gMin=-500;gMax=500;}
@@ -345,7 +399,7 @@ function render() {
       const v=parseFloat(td.dataset.v);
       const [hr,qr]=td.dataset.row.split("-");
       const ds=td.dataset.date;
-      const mmode=document.getElementById("metricMode").value;
+      const mmode="saldo";
       const dir=v>0?"Short":v<0?"Long":"Balanced";
       const dc=v>0?"#1a7a3a":v<0?"#b22222":"#888";
       const label=ds==="avg"?hr+":"+QTR_MIN[qr]+" - Average":ds+" "+dowOf(ds)+" "+hr+":"+QTR_MIN[qr];
@@ -464,7 +518,12 @@ function computeSimilarity() {
   }
 
   const winLabel = keys[0]+" .. "+keys[keys.length-1];
-  info.innerHTML = "Target: <b>"+targetDate+" ("+dowOf(targetDate)+")</b> | window: <b>"+winLabel+"</b> ("+keys.length+" quarters, "+haveTarget+" with data) | comparing "+results.length+" days. Now (Berlin): "+nb.date+" "+String(nb.hour).padStart(2,"0")+":"+String(nb.minute).padStart(2,"0");
+  const fv1 = document.getElementById("var1").value;
+  const fv2 = document.getElementById("var2").value;
+  const fitems = forwardSpec(fwdWindow);
+  const fwdLabel = VAR_LABELS[fv1]+" - "+VAR_LABELS[fv2];
+  const fFirst = fitems[0], fLast = fitems[fitems.length-1];
+  info.innerHTML = "Target: <b>"+targetDate+" ("+dowOf(targetDate)+")</b> | lookback: <b>"+winLabel+"</b> ("+haveTarget+" q with data) | forward: <b>"+fFirst.key+(fFirst.off?" (+1d)":"")+" .. "+fLast.key+(fLast.off?" (+1d)":"")+"</b> ("+fitems.length+" q, spread "+fwdLabel+") | comparing "+results.length+" days. Now (Berlin): "+nb.date+" "+String(nb.hour).padStart(2,"0")+":"+String(nb.minute).padStart(2,"0");
 
   const maxMae = Math.max(...results.map(r=>r.mae)) || 1;
 
@@ -474,18 +533,35 @@ function computeSimilarity() {
     + "<th>Day</th>"
     + "<th data-s='quarter'>Quarter match</th>"
     + "<th data-s='saldo'>Saldo closeness (avg diff)</th>"
+    + "<th>Fwd "+fwdLabel+" avg</th>"
+    + "<th>Fwd pos%</th>"
     + "<th></th>"
     + "</tr></thead><tbody>";
 
   results.slice(0, 30).forEach((r, idx) => {
     const mcls = r.matchPct >= 75 ? "match-good" : r.matchPct >= 50 ? "match-mid" : "match-low";
     const closeness = Math.round((1 - r.mae/maxMae) * 100);
+
+    // Ileri pencere spread istatistikleri (o gunun ayni saat diliminde ne olmus)
+    const fvals = fitems.map(it => spreadValFor(fv1, fv2, shiftDateStr(r.date, it.off), it.key)).filter(v => v !== null);
+    let fwdAvgCell = "<span style='color:#bbb'>-</span>", fwdPosCell = "<span style='color:#bbb'>-</span>";
+    if (fvals.length) {
+      const favg = Math.round(fvals.reduce((a,b)=>a+b,0)/fvals.length*100)/100;
+      const fpos = Math.round(fvals.filter(v=>v>0).length/fvals.length*100);
+      const fc = favg > 0 ? "#145a2d" : "#8b1a1a";
+      fwdAvgCell = "<span style='font-weight:700;color:"+fc+"'>"+(favg>0?"+":"")+favg+"</span> <span style='color:#999;font-size:10px'>("+fvals.length+"q)</span>";
+      const pc = fpos >= 50 ? "match-good" : "match-low";
+      fwdPosCell = "<span class='"+pc+"'>"+fpos+"%</span>";
+    }
+
     html += "<tr>"
       + "<td class='sim-rank'>"+(idx+1)+"</td>"
       + "<td class='sim-date'>"+r.date+"</td>"
       + "<td>"+dowOf(r.date)+"</td>"
       + "<td class='"+mcls+"'>"+r.match+"/"+r.matchTotal+" ("+r.matchPct+"%)</td>"
       + "<td><div class='sim-bar-wrap'><div class='sim-bar' style='width:"+Math.max(2,closeness)+"px'></div><span>"+Math.round(r.mae)+" MW</span></div></td>"
+      + "<td>"+fwdAvgCell+"</td>"
+      + "<td>"+fwdPosCell+"</td>"
       + "<td><button class='sim-view-btn' data-view='"+r.date+"'>View</button></td>"
       + "</tr>";
   });
@@ -522,7 +598,88 @@ function computeSimilarity() {
 }
 
 // ---------- Olaylar ----------
-function onRangeChange(){ resetActiveToRange(); buildDayFilter(); buildStats(); render(); computeSimilarity(); }
+const VAR_LABELS = {aep:"IMB", id1:"ID1", id3:"ID3", spot:"SPOT", vwap:"VWAP"};
+
+function renderSpread() {
+  const dates = Array.from(activeDates).sort();
+  const v1 = document.getElementById("var1").value;
+  const v2 = document.getElementById("var2").value;
+  const scaleMode = document.getElementById("scaleMode").value;
+  const viewMode  = document.getElementById("viewMode").value;
+  const outer = document.getElementById("spreadOuter");
+  if (!dates.length){ outer.innerHTML='<div class="empty-msg">No dates selected.</div>'; return; }
+
+  const sVal = (ds,key) => {
+    const a = metricVal(v1, ds, key), b = metricVal(v2, ds, key);
+    if (a === null || b === null) return null;
+    return Math.round((a - b) * 100) / 100;
+  };
+
+  let gMin=Infinity, gMax=-Infinity;
+  ROWS.forEach(r=>dates.forEach(ds=>{ const v=sVal(ds,r); if(v!==null){gMin=Math.min(gMin,v);gMax=Math.max(gMax,v);} }));
+  if(scaleMode==="sym500"){gMin=-500;gMax=500;}
+  if(scaleMode==="sym1000"){gMin=-1000;gMax=1000;}
+  if(gMin===Infinity){ outer.innerHTML='<div class="empty-msg">No data for '+VAR_LABELS[v1]+' - '+VAR_LABELS[v2]+' yet.</div>'; return; }
+
+  let html="<table><thead><tr>";
+  html+='<th class="th-corner">Hour / Qtr</th>';
+  dates.forEach(ds=>{
+    let cls="th-day"; if(isWeekend(ds)) cls+=" weekend"; if(ds===highlightDate) cls+=" target";
+    html+='<th class="'+cls+'"><div>'+dayNum(ds)+'</div><div style="font-size:9px;font-weight:400;color:#aaa">'+dowOf(ds)+'</div></th>';
+  });
+  html+='<th class="th-avg"><div style="display:flex;gap:6px;justify-content:center">Avg <span style="font-size:9px;color:#999;font-weight:400">| Pos%</span></div></th>';
+  html+="</tr></thead><tbody>";
+
+  ROWS.forEach(rowKey=>{
+    const [hr,qr]=rowKey.split("-");
+    const isQ1=qr==="Q1";
+    const rowVals=dates.map(ds=>sVal(ds,rowKey));
+    let rMin=Infinity,rMax=-Infinity;
+    if(scaleMode==="row") rowVals.forEach(v=>{if(v!==null){rMin=Math.min(rMin,v);rMax=Math.max(rMax,v);}});
+    const useMin=scaleMode==="row"?(rMin===Infinity?-100:rMin):gMin;
+    const useMax=scaleMode==="row"?(rMax===-Infinity?100:rMax):gMax;
+
+    html+="<tr"+(isQ1?' class="hour-sep"':"")+">";
+    html+='<th class="th-row"><span class="hour">'+hr+':00</span><span class="qtr">'+qr+'</span></th>';
+    rowVals.forEach((v,di)=>{
+      const ds=dates[di];
+      const wb=isWeekend(ds)?"border-left:2px solid #c0d4f0;":"";
+      if(v===null){html+='<td class="cell" style="background:#f5f4f0;color:#ccc;'+wb+'">-</td>';return;}
+      const bg=getColor(v,useMin,useMax), tc=textCol(v,useMin,useMax);
+      html+='<td class="cell spread-cell" style="background:'+bg+';color:'+tc+';'+wb+'" data-v="'+v+'" data-row="'+rowKey+'" data-date="'+ds+'">'+fmtVal(v,viewMode)+'</td>';
+    });
+    const valid=rowVals.filter(v=>v!==null);
+    if(valid.length){
+      const avg=Math.round(valid.reduce((a,b)=>a+b,0)/valid.length*100)/100;
+      const posPct=Math.round(valid.filter(v=>v>0).length/valid.length*100);
+      const pctClass=posPct>=50?"up":"down";
+      html+='<td class="avg-cell" style="background:'+getColor(avg,useMin,useMax)+';color:'+textCol(avg,useMin,useMax)+'"><div class="avg-inner"><span>'+fmtVal(avg,viewMode)+'</span><span class="avg-pct '+pctClass+'">+'+posPct+'%</span></div></td>';
+    } else { html+='<td class="avg-cell" style="background:#f0ede8;color:#ccc">-</td>'; }
+    html+="</tr>";
+  });
+  html+="</tbody></table>";
+  outer.innerHTML=html;
+
+  outer.querySelectorAll("td.spread-cell[data-v]").forEach(td=>{
+    td.addEventListener("mousemove",e=>{
+      const v=parseFloat(td.dataset.v);
+      const [hr,qr]=td.dataset.row.split("-");
+      const ds=td.dataset.date;
+      const a=metricVal(v1,ds,td.dataset.row), b=metricVal(v2,ds,td.dataset.row);
+      const s=metricVal("saldo",ds,td.dataset.row);
+      tooltip.style.display="block";
+      tooltip.style.left=(e.clientX+14)+"px";
+      tooltip.style.top=(e.clientY-40)+"px";
+      tooltip.innerHTML="<b>"+ds+" "+dowOf(ds)+" "+hr+":"+QTR_MIN[qr]+"</b><br>"
+        +"<span style='font-weight:600;color:"+(v>0?"#1a7a3a":"#b22222")+"'>"+VAR_LABELS[v1]+" - "+VAR_LABELS[v2]+": "+(v>0?"+":"")+v+" EUR/MWh</span>"
+        +"<br><span style='color:#666'>"+VAR_LABELS[v1]+": "+(a===null?"-":a)+" | "+VAR_LABELS[v2]+": "+(b===null?"-":b)+"</span>"
+        +"<br><span style='color:#666'>Saldo: "+(s===null?"-":(s>0?"+":"")+s+" MW")+"</span>";
+    });
+    td.addEventListener("mouseleave",()=>{tooltip.style.display="none";});
+  });
+}
+
+function onRangeChange(){ resetActiveToRange(); buildDayFilter(); buildStats(); render(); renderSpread(); renderSpread(); computeSimilarity(); }
 
 document.getElementById("startDate").addEventListener("change", onRangeChange);
 document.getElementById("endDate").addEventListener("change", onRangeChange);
@@ -537,9 +694,19 @@ document.querySelectorAll(".quick-btn").forEach(btn=>{
   });
 });
 
-document.getElementById("metricMode").addEventListener("change", render);
-document.getElementById("scaleMode").addEventListener("change", render);
-document.getElementById("viewMode").addEventListener("change", render);
+document.getElementById("scaleMode").addEventListener("change", ()=>{render(); renderSpread();});
+document.getElementById("viewMode").addEventListener("change", ()=>{render(); renderSpread();});
+document.getElementById("var1").addEventListener("change", ()=>{renderSpread(); computeSimilarity();});
+document.getElementById("var2").addEventListener("change", ()=>{renderSpread(); computeSimilarity();});
+
+document.querySelectorAll(".fwd-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".fwd-btn").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    fwdWindow = Number(btn.dataset.fwd);
+    computeSimilarity();
+  });
+});
 document.getElementById("simSort").addEventListener("change", computeSimilarity);
 document.getElementById("simScope").addEventListener("change", computeSimilarity);
 
@@ -557,6 +724,7 @@ resetActiveToRange();
 buildDayFilter();
 buildStats();
 render();
+renderSpread();
 computeSimilarity();
 </script>
 </body>
