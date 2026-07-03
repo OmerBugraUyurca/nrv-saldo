@@ -97,6 +97,44 @@
   <button class="quick-btn" data-range="all">All</button>
 </div>
 
+<!-- ============ SIMILARITY PANEL ============ -->
+<h2>Pattern Matching - Most Similar Days</h2>
+<div class="panel">
+  <div class="sim-controls">
+    <div class="ctrl-group">
+      <label>Lookback window:</label>
+      <div class="sim-window">
+        <button class="win-btn active" data-win="2">Last 2 hours</button>
+        <button class="win-btn" data-win="3">Last 3 hours</button>
+      </div>
+    </div>
+    <div class="ctrl-group">
+      <label>Forward window:</label>
+      <div class="sim-window">
+        <button class="fwd-btn active" data-fwd="2">+2 hours</button>
+        <button class="fwd-btn" data-fwd="4">+4 hours</button>
+      </div>
+    </div>
+    <div class="ctrl-group">
+      <label>Sort by:</label>
+      <select id="simSort">
+        <option value="quarter">Quarter match</option>
+        <option value="saldo">Saldo closeness</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <label>Compare against:</label>
+      <select id="simScope">
+        <option value="range">Selected date range</option>
+        <option value="all">All days</option>
+      </select>
+    </div>
+  </div>
+  <div class="sim-info" id="simInfo"></div>
+  <table class="sim-table" id="simTable"></table>
+</div>
+
+
 <div class="controls">
   <div class="ctrl-group">
     <label>Color scale:</label>
@@ -160,43 +198,6 @@
   </div>
 </div>
 <div class="tooltip" id="tooltip"></div>
-
-<!-- ============ SIMILARITY PANEL ============ -->
-<h2>Pattern Matching - Most Similar Days</h2>
-<div class="panel">
-  <div class="sim-controls">
-    <div class="ctrl-group">
-      <label>Lookback window:</label>
-      <div class="sim-window">
-        <button class="win-btn active" data-win="2">Last 2 hours</button>
-        <button class="win-btn" data-win="3">Last 3 hours</button>
-      </div>
-    </div>
-    <div class="ctrl-group">
-      <label>Forward window:</label>
-      <div class="sim-window">
-        <button class="fwd-btn active" data-fwd="2">+2 hours</button>
-        <button class="fwd-btn" data-fwd="4">+4 hours</button>
-      </div>
-    </div>
-    <div class="ctrl-group">
-      <label>Sort by:</label>
-      <select id="simSort">
-        <option value="quarter">Quarter match</option>
-        <option value="saldo">Saldo closeness</option>
-      </select>
-    </div>
-    <div class="ctrl-group">
-      <label>Compare against:</label>
-      <select id="simScope">
-        <option value="range">Selected date range</option>
-        <option value="all">All days</option>
-      </select>
-    </div>
-  </div>
-  <div class="sim-info" id="simInfo"></div>
-  <table class="sim-table" id="simTable"></table>
-</div>
 
 <script>
 const ALL_DATA = __DATA_JSON__;
@@ -439,37 +440,32 @@ function nowBerlin() {
 // Pencere icindeki ROW key'lerini uret (su anki Berlin saatinden geriye N saat)
 function windowKeys(winHours) {
   const nb = nowBerlin();
-  // Mevcut tamamlanmis ceyrege kadar geriye git
-  // Su anki saat:dakika -> en son tamamlanan ceyrek
-  let endIdx = nb.hour * 4 + Math.floor(nb.minute / 15); // 0..95, su anki ceyrek (henuz tamamlanmamis)
-  // tamamlanan son ceyrek = endIdx - 1
-  const lastDone = endIdx - 1;
+  let endIdx = nb.hour * 4 + Math.floor(nb.minute / 15); // su anki ceyrek
+  const lastDone = endIdx - 1; // son tamamlanan ceyrek
   const count = winHours * 4;
-  const keys = [];
+  const items = [];
   for (let i = lastDone - count + 1; i <= lastDone; i++) {
-    if (i < 0) continue; // gun basindan once
-    const h = Math.floor(i/4), q = i%4;
-    keys.push(String(h).padStart(2,"0")+"-"+["Q1","Q2","Q3","Q4"][q]);
+    const off = Math.floor(i / 96);            // -1 = onceki gun
+    const idx = ((i % 96) + 96) % 96;
+    const h = Math.floor(idx/4), q = idx%4;
+    items.push({off: off, key: String(h).padStart(2,"0")+"-Q"+(q+1)});
   }
-  return { keys, targetDate: nb.date, nb };
+  return { items, targetDate: nb.date, nb };
 }
 
 function computeSimilarity() {
-  const { keys, targetDate, nb } = windowKeys(simWindow);
+  const { items, targetDate, nb } = windowKeys(simWindow);
   const info = document.getElementById("simInfo");
   const tableEl = document.getElementById("simTable");
 
-  if (!keys.length) {
-    info.innerHTML = "Not enough completed quarters yet today for the selected window.";
-    tableEl.innerHTML = "";
-    return;
-  }
-
-  const targetVals = keys.map(k => (ALL_DATA[targetDate] && ALL_DATA[targetDate][k] !== undefined) ? ALL_DATA[targetDate][k] : null);
+  const targetVals = items.map(it => {
+    const d = shiftDateStr(targetDate, it.off);
+    return (ALL_DATA[d] && ALL_DATA[d][it.key] !== undefined) ? ALL_DATA[d][it.key] : null;
+  });
   const haveTarget = targetVals.filter(v => v !== null).length;
 
   if (haveTarget === 0) {
-    info.innerHTML = "Target day ("+targetDate+") has no data yet for "+keys[0]+" .. "+keys[keys.length-1]+".";
+    info.innerHTML = "No data yet in the lookback window ("+items[0].key+" .. "+items[items.length-1].key+"). Waiting for fresh data.";
     tableEl.innerHTML = "";
     return;
   }
@@ -482,9 +478,10 @@ function computeSimilarity() {
   const results = [];
   candidates.forEach(ds => {
     let sumAbs = 0, n = 0, match = 0, matchTotal = 0;
-    keys.forEach((k, i) => {
+    items.forEach((it, i) => {
       const tv = targetVals[i];
-      const cv = (ALL_DATA[ds] && ALL_DATA[ds][k] !== undefined) ? ALL_DATA[ds][k] : null;
+      const cd = shiftDateStr(ds, it.off);
+      const cv = (ALL_DATA[cd] && ALL_DATA[cd][it.key] !== undefined) ? ALL_DATA[cd][it.key] : null;
       if (tv === null || cv === null) return;
       sumAbs += Math.abs(tv - cv);
       n++;
@@ -517,7 +514,8 @@ function computeSimilarity() {
     results.sort((a,b) => b.matchPct - a.matchPct || a.mae - b.mae);
   }
 
-  const winLabel = keys[0]+" .. "+keys[keys.length-1];
+  const wF = items[0], wL = items[items.length-1];
+  const winLabel = wF.key+(wF.off<0?" (-1d)":"")+" .. "+wL.key+(wL.off<0?" (-1d)":"");
   const fv1 = document.getElementById("var1").value;
   const fv2 = document.getElementById("var2").value;
   const fitems = forwardSpec(fwdWindow);
