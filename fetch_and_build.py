@@ -146,9 +146,21 @@ if __name__ == "__main__":
         print("Ilk calisma: son 6 ay")
         start = (today - relativedelta(months=6)).replace(day=1)
     else:
-        start = today - timedelta(days=2)
+        start = today - timedelta(days=4)
     d_from = start.strftime("%Y-%m-%d")
-    d_to   = today.strftime("%Y-%m-%d")
+
+    # API dateTo HARIC calisiyor: bugunun verisi icin yarini iste.
+    # Yarin (gelecek tarih) bazen 500 donuyor -> bugune dus.
+    def fetch_recent(fetch_fn, name):
+        f_from = (today - timedelta(days=4)).strftime("%Y-%m-%d")
+        for dt in [today + timedelta(days=1), today]:
+            try:
+                df = fetch_fn(f_from, dt.strftime("%Y-%m-%d"), token)
+                print(f"{name} recent {f_from} -> {dt}: {len(df)} satir")
+                return df
+            except Exception as e:
+                print(f"{name} recent to={dt} hata: {e}")
+        return pd.DataFrame()
 
     # --- NRV Saldo ---
     if first_run:
@@ -164,9 +176,11 @@ if __name__ == "__main__":
             except Exception as e:
                 print(f"  NRV {cur} hata: {e}")
             cur = nxt
+        recent = fetch_recent(fetch_nrv, "NRV")
+        if len(recent): frames.append(recent)
         nrv_new = pd.concat(frames) if frames else pd.DataFrame()
     else:
-        nrv_new = fetch_nrv(d_from, d_to, token)
+        nrv_new = fetch_recent(fetch_nrv, "NRV")
     nrv_df = update_csv(nrv_new, "data/nrv_saldo.csv")
     saldo = df_to_map(nrv_df, find_value_col(nrv_df, ["Deutschland"]))
     with open("data/nrv_data.json","w") as f: json.dump(saldo, f)
@@ -187,9 +201,11 @@ if __name__ == "__main__":
                 except Exception as e:
                     print(f"  AEP {cur} hata: {e}")
                 cur = nxt
+            recent_a = fetch_recent(fetch_aep, "AEP")
+            if len(recent_a): frames.append(recent_a)
             aep_new = pd.concat(frames) if frames else pd.DataFrame()
         else:
-            aep_new = fetch_aep(d_from, d_to, token)
+            aep_new = fetch_recent(fetch_aep, "AEP")
         aep_df = update_csv(aep_new, "data/aep.csv")
         aep_col = find_value_col(aep_df, ["AEP", "Schaetz", "Schätz", "Deutschland"])
         print("AEP kolonlari:", list(aep_df.columns), "| secilen:", aep_col)
@@ -206,7 +222,7 @@ if __name__ == "__main__":
     id3  = load_json("data/id3_data.json")
     spot = load_json("data/spot_data.json")
     if EQ_API_KEY:
-        eq_from = start if first_run else (today - timedelta(days=2))
+        eq_from = start if first_run else (today - timedelta(days=4))
         eq_to   = today + timedelta(days=1)  # EQ end exclusive
         try:
             id1_new = fetch_eq_series("DE Price Intraday VWAP ID1 EUR/MWh EPEX 15min Actual", eq_from, eq_to)
