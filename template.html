@@ -99,6 +99,16 @@
 
 <div class="controls">
   <div class="ctrl-group">
+    <label>Metric:</label>
+    <select id="metricMode">
+      <option value="saldo">NRV Saldo (MW)</option>
+      <option value="aep">AEP estimate (EUR/MWh)</option>
+      <option value="id1">ID1 VWAP (EUR/MWh)</option>
+      <option value="vwap">Intraday VWAP (EUR/MWh)</option>
+      <option value="pnl">Long P&amp;L = AEP - ID1 (EUR/MWh)</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
     <label>Color scale:</label>
     <select id="scaleMode">
       <option value="global">Global</option>
@@ -166,7 +176,25 @@
 
 <script>
 const ALL_DATA = __DATA_JSON__;
+const AEP_DATA  = __AEP_JSON__;
+const ID1_DATA  = __ID1_JSON__;
+const VWAP_DATA = __VWAP_JSON__;
 const ALL_DATES = Object.keys(ALL_DATA).sort();
+
+function metricVal(metric, ds, key) {
+  if (metric === "saldo") return (ALL_DATA[ds] && ALL_DATA[ds][key] !== undefined) ? ALL_DATA[ds][key] : null;
+  if (metric === "aep")   return (AEP_DATA[ds]  && AEP_DATA[ds][key]  !== undefined) ? AEP_DATA[ds][key]  : null;
+  if (metric === "id1")   return (ID1_DATA[ds]  && ID1_DATA[ds][key]  !== undefined) ? ID1_DATA[ds][key]  : null;
+  if (metric === "vwap")  return (VWAP_DATA[ds] && VWAP_DATA[ds][key] !== undefined) ? VWAP_DATA[ds][key] : null;
+  if (metric === "pnl") {
+    const a = (AEP_DATA[ds] && AEP_DATA[ds][key] !== undefined) ? AEP_DATA[ds][key] : null;
+    const i = (ID1_DATA[ds] && ID1_DATA[ds][key] !== undefined) ? ID1_DATA[ds][key] : null;
+    if (a === null || i === null) return null;
+    return Math.round((a - i) * 100) / 100;
+  }
+  return null;
+}
+function metricUnit(metric){ return metric === "saldo" ? "MW" : "EUR/MWh"; }
 
 const ROWS = [];
 for (let h = 0; h < 24; h++)
@@ -259,8 +287,9 @@ function render() {
   const viewMode  = document.getElementById("viewMode").value;
   if (!dates.length){ document.getElementById("tableOuter").innerHTML='<div class="empty-msg">No dates selected.</div>'; return; }
 
+  const metric = document.getElementById("metricMode").value;
   let gMin=Infinity, gMax=-Infinity;
-  ROWS.forEach(r=>dates.forEach(ds=>{ const v=ALL_DATA[ds]?ALL_DATA[ds][r]:undefined; if(v!==undefined){gMin=Math.min(gMin,v);gMax=Math.max(gMax,v);} }));
+  ROWS.forEach(r=>dates.forEach(ds=>{ const v=metricVal(metric,ds,r); if(v!==null){gMin=Math.min(gMin,v);gMax=Math.max(gMax,v);} }));
   if(scaleMode==="sym500"){gMin=-500;gMax=500;}
   if(scaleMode==="sym1000"){gMin=-1000;gMax=1000;}
   if(gMin===Infinity){gMin=-100;gMax=100;}
@@ -279,7 +308,7 @@ function render() {
   ROWS.forEach(rowKey=>{
     const [hr,qr]=rowKey.split("-");
     const isQ1=qr==="Q1";
-    const rowVals=dates.map(ds=>(ALL_DATA[ds]&&ALL_DATA[ds][rowKey]!==undefined)?ALL_DATA[ds][rowKey]:null);
+    const rowVals=dates.map(ds=>metricVal(metric,ds,rowKey));
     let rMin=Infinity,rMax=-Infinity;
     if(scaleMode==="row") rowVals.forEach(v=>{if(v!==null){rMin=Math.min(rMin,v);rMax=Math.max(rMax,v);}});
     const useMin=scaleMode==="row"?(rMin===Infinity?-100:rMin):gMin;
@@ -297,11 +326,14 @@ function render() {
     });
     const valid=rowVals.filter(v=>v!==null);
     if(valid.length){
-      const avg=Math.round(valid.reduce((a,b)=>a+b,0)/valid.length);
-      const shortPct=Math.round(valid.filter(v=>v>0).length/valid.length*100);
-      const pctClass=shortPct>=50?"up":"down";
-      const pctLabel=shortPct>=50?"S "+shortPct+"%":"L "+(100-shortPct)+"%";
-      html+='<td class="avg-cell" style="background:'+getColor(avg,useMin,useMax)+';color:'+textCol(avg,useMin,useMax)+'" data-v="'+avg+'" data-row="'+rowKey+'" data-date="avg"><div class="avg-inner"><span>'+fmtVal(avg,viewMode)+'</span><span class="avg-pct '+pctClass+'">'+pctLabel+'</span></div></td>';
+      const avg=Math.round(valid.reduce((a,b)=>a+b,0)/valid.length*100)/100;
+      const posPct=Math.round(valid.filter(v=>v>0).length/valid.length*100);
+      const pctClass=posPct>=50?"up":"down";
+      let pctLabel="";
+      if(metric==="saldo") pctLabel=posPct>=50?"S "+posPct+"%":"L "+(100-posPct)+"%";
+      else if(metric==="pnl") pctLabel="+"+posPct+"%";
+      const badge = pctLabel ? '<span class="avg-pct '+pctClass+'">'+pctLabel+'</span>' : "";
+      html+='<td class="avg-cell" style="background:'+getColor(avg,useMin,useMax)+';color:'+textCol(avg,useMin,useMax)+'" data-v="'+avg+'" data-row="'+rowKey+'" data-date="avg"><div class="avg-inner"><span>'+fmtVal(avg,viewMode)+'</span>'+badge+'</div></td>';
     } else { html+='<td class="avg-cell" style="background:#f0ede8;color:#ccc">-</td>'; }
     html+="</tr>";
   });
@@ -313,13 +345,25 @@ function render() {
       const v=parseFloat(td.dataset.v);
       const [hr,qr]=td.dataset.row.split("-");
       const ds=td.dataset.date;
+      const mmode=document.getElementById("metricMode").value;
       const dir=v>0?"Short":v<0?"Long":"Balanced";
       const dc=v>0?"#1a7a3a":v<0?"#b22222":"#888";
       const label=ds==="avg"?hr+":"+QTR_MIN[qr]+" - Average":ds+" "+dowOf(ds)+" "+hr+":"+QTR_MIN[qr];
+      let extra="";
+      if(ds!=="avg"){
+        const s=metricVal("saldo",ds,td.dataset.row), a=metricVal("aep",ds,td.dataset.row),
+              i1=metricVal("id1",ds,td.dataset.row), p=metricVal("pnl",ds,td.dataset.row);
+        extra+="<br><span style='color:#666'>Saldo: "+(s===null?"-":(s>0?"+":"")+s+" MW")+"</span>";
+        extra+="<br><span style='color:#666'>AEP: "+(a===null?"-":a)+" | ID1: "+(i1===null?"-":i1)+"</span>";
+        if(p!==null) extra+="<br><span style='font-weight:600;color:"+(p>0?"#1a7a3a":"#b22222")+"'>Long P&L: "+(p>0?"+":"")+p+" EUR/MWh</span>";
+      }
+      const mainLine = mmode==="saldo"
+        ? "<span style=\"color:"+dc+";font-weight:600\">"+dir+": "+(v>0?"+":"")+v+" MW</span>"
+        : "<span style=\"font-weight:600\">"+(v>0?"+":"")+v+" "+metricUnit(mmode)+"</span>";
       tooltip.style.display="block";
       tooltip.style.left=(e.clientX+14)+"px";
       tooltip.style.top=(e.clientY-40)+"px";
-      tooltip.innerHTML="<b>"+label+"</b><br><span style=\"color:"+dc+";font-weight:600\">"+dir+": "+(v>0?"+":"")+v+" MW</span>";
+      tooltip.innerHTML="<b>"+label+"</b><br>"+mainLine+extra;
     });
     td.addEventListener("mouseleave",()=>{tooltip.style.display="none";});
   });
@@ -493,6 +537,7 @@ document.querySelectorAll(".quick-btn").forEach(btn=>{
   });
 });
 
+document.getElementById("metricMode").addEventListener("change", render);
 document.getElementById("scaleMode").addEventListener("change", render);
 document.getElementById("viewMode").addEventListener("change", render);
 document.getElementById("simSort").addEventListener("change", computeSimilarity);
