@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spread Trend Backtest</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f4f0;color:#1a1a1a;padding:20px}
+  h1{font-size:18px;font-weight:600;margin-bottom:4px}
+  h2{font-size:14px;font-weight:600;margin:20px 0 8px}
+  .subtitle{font-size:12px;color:#888;margin-bottom:16px}
+  .panel{background:#fff;border:1px solid #ddd;border-radius:8px;padding:14px 16px;margin-bottom:16px}
+  .controls{display:flex;flex-wrap:wrap;align-items:center;gap:14px}
+  .cg{display:flex;align-items:center;gap:6px}
+  .cg label{font-size:12px;color:#555;font-weight:600}
+  select{font-size:12px;padding:4px 8px;border:1px solid #ccc;border-radius:5px;background:#fff;cursor:pointer}
+  .nbtn{font-size:12px;font-weight:600;padding:5px 12px;border:1px solid #bbb;border-radius:5px;background:#f7f5f1;cursor:pointer;color:#333}
+  .nbtn.active{background:#3266ad;color:#fff;border-color:#3266ad}
+  .stat-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+  .stat{background:#fff;border:1px solid #ddd;border-radius:7px;padding:8px 14px;min-width:120px}
+  .stat-label{font-size:10px;color:#888;margin-bottom:2px}
+  .stat-value{font-size:18px;font-weight:600;color:#222}
+  .stat-sub{font-size:10px;color:#aaa}
+  table{border-collapse:collapse;font-size:12px;width:100%}
+  th{text-align:left;padding:6px 9px;border-bottom:2px solid #ddd;color:#555;font-weight:600;white-space:nowrap}
+  td{padding:6px 9px;border-bottom:1px solid #eee;white-space:nowrap}
+  tr:hover td{background:#f7f9fc}
+  .pos{color:#145a2d;font-weight:700}
+  .neg{color:#8b1a1a;font-weight:700}
+  .muted{color:#999}
+  .badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px}
+  .badge.up{background:rgba(26,122,58,.15);color:#145a2d}
+  .badge.down{background:rgba(178,34,34,.13);color:#8b1a1a}
+  .active-box{background:#fff8e6;border:1px solid #f0d48a;border-radius:8px;padding:12px 16px;margin-bottom:16px}
+  .active-box h2{margin-top:0}
+  .err{color:#b22222;font-size:13px;padding:10px}
+  a{color:#3266ad;font-size:12px}
+  .scroll{overflow:auto;max-height:420px}
+</style>
+</head>
+<body>
+<h1>Spread Trend Backtest - Night Quarters</h1>
+<p class="subtitle">Signal: spread trend over consecutive days per quarter | Position taken next day | Data: same as main page &nbsp; <a href="index.html">&larr; back to main page</a></p>
+
+<div class="panel">
+  <div class="controls">
+    <div class="cg">
+      <label>Spread:</label>
+      <select id="v1">
+        <option value="id1" selected>ID1</option>
+        <option value="aep">IMB (AEP)</option>
+        <option value="id3">ID3</option>
+        <option value="spot">SPOT</option>
+        <option value="vwap">VWAP</option>
+      </select>
+      <span style="font-weight:700">-</span>
+      <select id="v2">
+        <option value="id1">ID1</option>
+        <option value="aep">IMB (AEP)</option>
+        <option value="id3">ID3</option>
+        <option value="spot" selected>SPOT</option>
+        <option value="vwap">VWAP</option>
+      </select>
+    </div>
+    <div class="cg">
+      <label>Signal:</label>
+      <select id="sigType">
+        <option value="level" selected>Level: same sign N days</option>
+        <option value="trend">Trend: rising/falling N days</option>
+      </select>
+    </div>
+    <div class="cg">
+      <label>N days:</label>
+      <button class="nbtn active" data-n="2">2</button>
+      <button class="nbtn" data-n="3">3</button>
+    </div>
+    <div class="cg">
+      <label>Hours:</label>
+      <select id="hFrom"></select>
+      <span>-</span>
+      <select id="hTo"></select>
+    </div>
+  </div>
+</div>
+
+<div id="activeWrap"></div>
+<div class="stat-row" id="statRow"></div>
+
+<h2>Per-quarter breakdown</h2>
+<div class="panel scroll"><table id="qTable"></table></div>
+
+<h2>All signals (most recent first)</h2>
+<div class="panel scroll"><table id="sigTable"></table></div>
+
+<script>
+const SERIES = {aep:{}, id1:{}, id3:{}, spot:{}, vwap:{}};
+const FILES = {aep:"data/aep_data.json", id1:"data/id1_data.json", id3:"data/id3_data.json", spot:"data/spot_data.json", vwap:"data/vwap_data.json"};
+const LBL = {aep:"IMB", id1:"ID1", id3:"ID3", spot:"SPOT", vwap:"VWAP"};
+let N = 2;
+
+function shiftDateStr(ds, off){
+  const [y,m,d]=ds.split("-").map(Number);
+  return new Date(Date.UTC(y,m-1,d+off)).toISOString().slice(0,10);
+}
+
+function val(series, ds, key){
+  const m = SERIES[series];
+  return (m[ds] && m[ds][key] !== undefined) ? m[ds][key] : null;
+}
+function spread(v1, v2, ds, key){
+  const a = val(v1, ds, key), b = val(v2, ds, key);
+  if (a === null || b === null) return null;
+  return Math.round((a - b) * 100) / 100;
+}
+
+function calendarDays(){
+  const all = new Set();
+  Object.values(SERIES).forEach(m => Object.keys(m).forEach(d => all.add(d)));
+  const ds = Array.from(all).sort();
+  if (!ds.length) return [];
+  const out = [];
+  let cur = ds[0];
+  while (cur <= ds[ds.length-1]) { out.push(cur); cur = shiftDateStr(cur, 1); }
+  return out;
+}
+
+function compute(){
+  const v1 = document.getElementById("v1").value;
+  const v2 = document.getElementById("v2").value;
+  const sigType = document.getElementById("sigType").value;
+  const hF = Number(document.getElementById("hFrom").value);
+  const hT = Number(document.getElementById("hTo").value);
+
+  const days = calendarDays();
+  const keys = [];
+  for (let h = hF; h <= hT; h++)
+    for (const q of ["Q1","Q2","Q3","Q4"])
+      keys.push(String(h).padStart(2,"0")+"-"+q);
+
+  const signals = [];   // kapali (ertesi gun verisi olan) sinyaller
+  const active = [];    // son gunde olusan, yarin icin gecerli sinyaller
+
+  keys.forEach(key => {
+    const s = days.map(d => spread(v1, v2, d, key));
+    for (let i = N; i < days.length; i++) {
+      // pencere: level icin son N gun, trend icin N karsilastirma (N+1 nokta)
+      let dir = 0;
+      if (sigType === "level") {
+        let allPos = true, allNeg = true;
+        for (let j = i - N + 1; j <= i; j++) {
+          if (s[j] === null) { allPos = allNeg = false; break; }
+          if (s[j] <= 0) allPos = false;
+          if (s[j] >= 0) allNeg = false;
+        }
+        dir = allPos ? 1 : allNeg ? -1 : 0;
+      } else {
+        let rising = true, falling = true;
+        for (let j = i - N + 1; j <= i; j++) {
+          if (s[j] === null || s[j-1] === null) { rising = falling = false; break; }
+          if (s[j] <= s[j-1]) rising = false;
+          if (s[j] >= s[j-1]) falling = false;
+        }
+        dir = rising ? 1 : falling ? -1 : 0;
+      }
+      if (!dir) continue;
+
+      const isLast = (i === days.length - 1);
+      const nxt = isLast ? null : s[i+1];
+      let pnl = null;
+      if (nxt !== null) {
+        pnl = sigType === "level" ? dir * nxt : dir * Math.round((nxt - s[i]) * 100) / 100;
+        pnl = Math.round(pnl * 100) / 100;
+      }
+      const rec = {date: days[i], nextDate: shiftDateStr(days[i],1), key, dir, cur: s[i], nxt, pnl};
+      if (isLast || nxt === null && isLast) active.push(rec);
+      else if (nxt !== null) signals.push(rec);
+      else if (isLast) active.push(rec);
+    }
+    // ayrica: son gun sinyali (i = days.length-1) aktif olarak zaten yakalandi
+  });
+
+  render(v1, v2, sigType, signals, active, keys);
+}
+
+function render(v1, v2, sigType, signals, active, keys){
+  const pair = LBL[v1]+" - "+LBL[v2];
+  const unit = "EUR/MWh";
+
+  // --- Aktif sinyaller (yarin icin) ---
+  const aw = document.getElementById("activeWrap");
+  if (active.length) {
+    let h = '<div class="active-box"><h2>Active signals for tomorrow ('+active.length+')</h2><table><thead><tr><th>Quarter</th><th>Direction</th><th>Current spread</th><th>Position hint</th></tr></thead><tbody>';
+    active.sort((a,b)=>a.key.localeCompare(b.key)).forEach(r=>{
+      const d = r.dir>0 ? '<span class="badge up">'+(sigType==="level"?"POSITIVE":"RISING")+'</span>' : '<span class="badge down">'+(sigType==="level"?"NEGATIVE":"FALLING")+'</span>';
+      const hint = r.dir>0 ? "long "+pair+" (buy "+LBL[v2]+", sell "+LBL[v1]+")" : "short "+pair;
+      h += '<tr><td><b>'+r.key+'</b></td><td>'+d+'</td><td>'+(r.cur>0?"+":"")+r.cur+'</td><td class="muted">'+hint+'</td></tr>';
+    });
+    h += '</tbody></table></div>';
+    aw.innerHTML = h;
+  } else {
+    aw.innerHTML = '<div class="active-box"><h2>Active signals for tomorrow</h2><span class="muted">None with current settings.</span></div>';
+  }
+
+  // --- Ozet ---
+  const withPnl = signals.filter(s => s.pnl !== null);
+  const wins = withPnl.filter(s => s.pnl > 0).length;
+  const tot = withPnl.reduce((a,b)=>a+b.pnl,0);
+  const avg = withPnl.length ? tot/withPnl.length : 0;
+  const best = withPnl.length ? Math.max(...withPnl.map(s=>s.pnl)) : 0;
+  const worst = withPnl.length ? Math.min(...withPnl.map(s=>s.pnl)) : 0;
+  const stats = [
+    {l:"Signals (evaluated)", v: withPnl.length, s: active.length+" active now"},
+    {l:"Win rate", v: withPnl.length ? Math.round(wins/withPnl.length*100)+"%" : "-", s: wins+" wins"},
+    {l:"Avg P&L / signal", v: (avg>0?"+":"")+avg.toFixed(2), s: unit},
+    {l:"Total P&L", v: (tot>0?"+":"")+tot.toFixed(2), s: unit+" (1 MWh each)"},
+    {l:"Best / Worst", v: "+"+best.toFixed(1)+" / "+worst.toFixed(1), s: unit},
+  ];
+  document.getElementById("statRow").innerHTML = stats.map(x =>
+    '<div class="stat"><div class="stat-label">'+x.l+'</div><div class="stat-value">'+x.v+'</div><div class="stat-sub">'+x.s+'</div></div>').join("");
+
+  // --- Ceyrek bazli ---
+  let qh = '<thead><tr><th>Quarter</th><th>Signals</th><th>Win rate</th><th>Avg P&L</th><th>Total P&L</th></tr></thead><tbody>';
+  keys.forEach(k => {
+    const rows = withPnl.filter(s => s.key === k);
+    if (!rows.length) { qh += '<tr><td>'+k+'</td><td class="muted">0</td><td class="muted">-</td><td class="muted">-</td><td class="muted">-</td></tr>'; return; }
+    const w = rows.filter(s=>s.pnl>0).length;
+    const t = rows.reduce((a,b)=>a+b.pnl,0);
+    const a = t/rows.length;
+    qh += '<tr><td><b>'+k+'</b></td><td>'+rows.length+'</td><td>'+Math.round(w/rows.length*100)+'%</td>'
+        + '<td class="'+(a>0?"pos":"neg")+'">'+(a>0?"+":"")+a.toFixed(2)+'</td>'
+        + '<td class="'+(t>0?"pos":"neg")+'">'+(t>0?"+":"")+t.toFixed(2)+'</td></tr>';
+  });
+  document.getElementById("qTable").innerHTML = qh + '</tbody>';
+
+  // --- Sinyal listesi ---
+  let sh = '<thead><tr><th>Signal date</th><th>Traded day</th><th>Quarter</th><th>Dir</th><th>Spread @ signal</th><th>Next-day result</th><th>P&L</th></tr></thead><tbody>';
+  signals.sort((a,b)=> b.date.localeCompare(a.date) || a.key.localeCompare(b.key)).slice(0,200).forEach(r=>{
+    const d = r.dir>0 ? '<span class="badge up">+</span>' : '<span class="badge down">-</span>';
+    sh += '<tr><td>'+r.date+'</td><td>'+r.nextDate+'</td><td>'+r.key+'</td><td>'+d+'</td>'
+        + '<td>'+(r.cur>0?"+":"")+r.cur+'</td><td>'+(r.nxt>0?"+":"")+r.nxt+'</td>'
+        + '<td class="'+(r.pnl>0?"pos":"neg")+'">'+(r.pnl>0?"+":"")+r.pnl+'</td></tr>';
+  });
+  document.getElementById("sigTable").innerHTML = sh + '</tbody>';
+}
+
+// --- Kurulum ---
+function initHours(){
+  const f = document.getElementById("hFrom"), t = document.getElementById("hTo");
+  for (let h = 0; h < 24; h++) {
+    const o1 = document.createElement("option"); o1.value = h; o1.textContent = String(h).padStart(2,"0")+":00";
+    const o2 = o1.cloneNode(true);
+    f.appendChild(o1); t.appendChild(o2);
+  }
+  f.value = 0; t.value = 5;  // gece: 00:00 - 05:45
+}
+
+async function loadAll(){
+  const jobs = Object.entries(FILES).map(async ([k, url]) => {
+    try {
+      const r = await fetch(url + "?t=" + Date.now());
+      if (r.ok) SERIES[k] = await r.json();
+    } catch(e) { console.warn(k, "yuklenemedi", e); }
+  });
+  await Promise.all(jobs);
+}
+
+document.getElementById("v1").addEventListener("change", compute);
+document.getElementById("v2").addEventListener("change", compute);
+document.getElementById("sigType").addEventListener("change", compute);
+document.getElementById("hFrom").addEventListener("change", compute);
+document.getElementById("hTo").addEventListener("change", compute);
+document.querySelectorAll(".nbtn").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll(".nbtn").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");
+  N = Number(b.dataset.n);
+  compute();
+}));
+
+initHours();
+loadAll().then(compute).catch(e => {
+  document.getElementById("statRow").innerHTML = '<div class="err">Data load error: '+e+'</div>';
+});
+</script>
+</body>
+</html>
