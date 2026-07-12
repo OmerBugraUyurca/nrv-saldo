@@ -17986,4 +17986,10 @@ Datum,Zeitzone,von,bis,Datenkategorie,Datentyp,Einheit,Deutschland,AEP Knappheit
 12.07.2026,UTC,08:00,08:15,NRV-Saldo,Betrieblich,MW,-42.783,0.0,0.0,0.0
 12.07.2026,UTC,08:15,08:30,NRV-Saldo,Betrieblich,MW,88.486,0.0,0.0,0.0
 12.07.2026,UTC,08:30,08:45,NRV-Saldo,Betrieblich,MW,-225.298,0.0,0.0,0.0
-12.07.2026,UTC,08:45,09:00,NRV-Saldo,Betrieblich,MW,-227.764,0.0,0.0,0.0
+12.07.2026,UTC,08:45,09:00,NRV-Saldo,Betrieblich,MW,25.99,0.0,0.0,0.0
+12.07.2026,UTC,09:00,09:15,NRV-Saldo,Betrieblich,MW,-601.122,0.0,0.0,0.0
+12.07.2026,UTC,09:15,09:30,NRV-Saldo,Betrieblich,MW,-163.723,0.0,0.0,0.0
+12.07.2026,UTC,09:30,09:45,NRV-Saldo,Betrieblich,MW,-373.074,0.0,0.0,0.0
+12.07.2026,UTC,09:45,10:00,NRV-Saldo,Betrieblich,MW,-248.05,0.0,0.0,0.0
+12.07.2026,UTC,10:00,10:15,NRV-Saldo,Betrieblich,MW,-50.975,0.0,0.0,0.0
+12.07.2026,UTC,10:15,10:30,NRV-Saldo,Betrieblich,MW,-153.985,0.0,0.0,0.0
