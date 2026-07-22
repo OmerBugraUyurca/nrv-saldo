@@ -18888,7 +18888,7 @@ Datum,Zeitzone,von,bis,Datenkategorie,Datentyp,Einheit,Deutschland,AEP Knappheit
 21.07.2026,UTC,17:30,17:45,NRV-Saldo,Betrieblich,MW,-293.144,0.0,0.0,0.0
 21.07.2026,UTC,17:45,18:00,NRV-Saldo,Betrieblich,MW,-359.731,0.0,0.0,0.0
 21.07.2026,UTC,18:00,18:15,NRV-Saldo,Betrieblich,MW,-435.796,0.0,0.0,0.0
-21.07.2026,UTC,18:15,18:30,NRV-Saldo,Betrieblich,MW,49.932,0.0,0.0,0.0
+21.07.2026,UTC,18:15,18:30,NRV-Saldo,Betrieblich,MW,46.932,0.0,0.0,0.0
 21.07.2026,UTC,18:30,18:45,NRV-Saldo,Betrieblich,MW,191.2,0.0,0.0,0.0
 21.07.2026,UTC,18:45,19:00,NRV-Saldo,Betrieblich,MW,-277.771,0.0,0.0,0.0
 21.07.2026,UTC,19:00,19:15,NRV-Saldo,Betrieblich,MW,-1345.276,0.0,0.0,0.0
@@ -18902,7 +18902,7 @@ Datum,Zeitzone,von,bis,Datenkategorie,Datentyp,Einheit,Deutschland,AEP Knappheit
 21.07.2026,UTC,21:00,21:15,NRV-Saldo,Betrieblich,MW,260.879,0.0,0.0,0.0
 21.07.2026,UTC,21:15,21:30,NRV-Saldo,Betrieblich,MW,-85.509,0.0,0.0,0.0
 21.07.2026,UTC,21:30,21:45,NRV-Saldo,Betrieblich,MW,-214.872,0.0,0.0,0.0
-21.07.2026,UTC,21:45,22:00,NRV-Saldo,Betrieblich,MW,-47.512,0.0,0.0,0.0
+21.07.2026,UTC,21:45,22:00,NRV-Saldo,Betrieblich,MW,-283.462,0.0,0.0,0.0
 21.07.2026,UTC,22:00,22:15,NRV-Saldo,Betrieblich,MW,-465.796,0.0,0.0,0.0
 21.07.2026,UTC,22:15,22:30,NRV-Saldo,Betrieblich,MW,277.505,0.0,0.0,0.0
 21.07.2026,UTC,22:30,22:45,NRV-Saldo,Betrieblich,MW,312.727,0.0,0.0,0.0
@@ -18967,4 +18967,11 @@ Datum,Zeitzone,von,bis,Datenkategorie,Datentyp,Einheit,Deutschland,AEP Knappheit
 22.07.2026,UTC,13:15,13:30,NRV-Saldo,Betrieblich,MW,-814.264,0.0,0.0,0.0
 22.07.2026,UTC,13:30,13:45,NRV-Saldo,Betrieblich,MW,-561.396,0.0,0.0,0.0
 22.07.2026,UTC,13:45,14:00,NRV-Saldo,Betrieblich,MW,-341.233,0.0,0.0,0.0
-22.07.2026,UTC,14:00,14:15,NRV-Saldo,Betrieblich,MW,-390.582,0.0,0.0,0.0
+22.07.2026,UTC,14:00,14:15,NRV-Saldo,Betrieblich,MW,-395.582,0.0,0.0,0.0
+22.07.2026,UTC,14:15,14:30,NRV-Saldo,Betrieblich,MW,-313.601,0.0,0.0,0.0
+22.07.2026,UTC,14:30,14:45,NRV-Saldo,Betrieblich,MW,-446.56,0.0,0.0,0.0
+22.07.2026,UTC,14:45,15:00,NRV-Saldo,Betrieblich,MW,-358.786,0.0,0.0,0.0
+22.07.2026,UTC,15:00,15:15,NRV-Saldo,Betrieblich,MW,410.615,0.0,0.0,0.0
+22.07.2026,UTC,15:15,15:30,NRV-Saldo,Betrieblich,MW,204.78,0.0,0.0,0.0
+22.07.2026,UTC,15:30,15:45,NRV-Saldo,Betrieblich,MW,149.518,0.0,0.0,0.0
+22.07.2026,UTC,15:45,16:00,NRV-Saldo,Betrieblich,MW,,,,
