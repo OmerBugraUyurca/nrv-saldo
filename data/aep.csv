@@ -21736,5 +21736,8 @@ Datum,Zeitzone,von,bis,Datenkategorie,Datentyp,Einheit,AEP-Schätzer,Status
 20.08.2026,UTC,09:30,09:45,AEP-Schätzer,Betrieblich,EUR/MWh,145.12,0.0
 20.08.2026,UTC,09:45,10:00,AEP-Schätzer,Betrieblich,EUR/MWh,211.87,0.0
 20.08.2026,UTC,10:00,10:15,AEP-Schätzer,Betrieblich,EUR/MWh,159.86,0.0
-20.08.2026,UTC,10:15,10:30,AEP-Schätzer,Betrieblich,EUR/MWh,,
-20.08.2026,UTC,10:30,10:45,AEP-Schätzer,Betrieblich,EUR/MWh,,
+20.08.2026,UTC,10:15,10:30,AEP-Schätzer,Betrieblich,EUR/MWh,294.24,0.0
+20.08.2026,UTC,10:30,10:45,AEP-Schätzer,Betrieblich,EUR/MWh,207.9,0.0
+20.08.2026,UTC,10:45,11:00,AEP-Schätzer,Betrieblich,EUR/MWh,189.56,0.0
+20.08.2026,UTC,11:00,11:15,AEP-Schätzer,Betrieblich,EUR/MWh,,
+20.08.2026,UTC,11:15,11:30,AEP-Schätzer,Betrieblich,EUR/MWh,,
