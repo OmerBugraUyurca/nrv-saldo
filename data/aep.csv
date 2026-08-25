@@ -22203,4 +22203,7 @@ Datum,Zeitzone,von,bis,Datenkategorie,Datentyp,Einheit,AEP-Schätzer,Status
 25.08.2026,UTC,06:15,06:30,AEP-Schätzer,Betrieblich,EUR/MWh,207.79,0.0
 25.08.2026,UTC,06:30,06:45,AEP-Schätzer,Betrieblich,EUR/MWh,181.77,0.0
 25.08.2026,UTC,06:45,07:00,AEP-Schätzer,Betrieblich,EUR/MWh,202.24,0.0
-25.08.2026,UTC,07:00,07:15,AEP-Schätzer,Betrieblich,EUR/MWh,,
+25.08.2026,UTC,07:00,07:15,AEP-Schätzer,Betrieblich,EUR/MWh,140.33,0.0
+25.08.2026,UTC,07:15,07:30,AEP-Schätzer,Betrieblich,EUR/MWh,111.03,0.0
+25.08.2026,UTC,07:30,07:45,AEP-Schätzer,Betrieblich,EUR/MWh,,
+25.08.2026,UTC,07:45,08:00,AEP-Schätzer,Betrieblich,EUR/MWh,,
