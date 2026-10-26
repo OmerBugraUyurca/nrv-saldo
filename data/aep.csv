@@ -28119,5 +28119,13 @@ Datum,Zeitzone,von,bis,Datenkategorie,Datentyp,Einheit,AEP-Schätzer,Status
 25.10.2026,UTC,21:15,21:30,AEP-Schätzer,Betrieblich,EUR/MWh,234.74,0.0
 25.10.2026,UTC,21:30,21:45,AEP-Schätzer,Betrieblich,EUR/MWh,230.35,0.0
 25.10.2026,UTC,21:45,22:00,AEP-Schätzer,Betrieblich,EUR/MWh,216.88,0.0
-25.10.2026,UTC,22:00,22:15,AEP-Schätzer,Betrieblich,EUR/MWh,,
-25.10.2026,UTC,22:15,22:30,AEP-Schätzer,Betrieblich,EUR/MWh,,
+25.10.2026,UTC,22:00,22:15,AEP-Schätzer,Betrieblich,EUR/MWh,22.55,0.0
+25.10.2026,UTC,22:15,22:30,AEP-Schätzer,Betrieblich,EUR/MWh,8.95,0.0
+25.10.2026,UTC,22:30,22:45,AEP-Schätzer,Betrieblich,EUR/MWh,118.87,0.0
+25.10.2026,UTC,22:45,23:00,AEP-Schätzer,Betrieblich,EUR/MWh,-6.14,0.0
+25.10.2026,UTC,23:00,23:15,AEP-Schätzer,Betrieblich,EUR/MWh,81.57,0.0
+25.10.2026,UTC,23:15,23:30,AEP-Schätzer,Betrieblich,EUR/MWh,94.73,0.0
+25.10.2026,UTC,23:30,23:45,AEP-Schätzer,Betrieblich,EUR/MWh,114.28,0.0
+25.10.2026,UTC,23:45,00:00,AEP-Schätzer,Betrieblich,EUR/MWh,28.48,0.0
+26.10.2026,UTC,00:00,00:15,AEP-Schätzer,Betrieblich,EUR/MWh,126.18,0.0
+26.10.2026,UTC,00:15,00:30,AEP-Schätzer,Betrieblich,EUR/MWh,,
