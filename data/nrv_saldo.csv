@@ -28691,4 +28691,16 @@ Datum,Zeitzone,von,bis,Datenkategorie,Datentyp,Einheit,Deutschland,AEP Knappheit
 31.10.2026,UTC,20:15,20:30,NRV-Saldo,Betrieblich,MW,-286.836,0.0,0.0,0.0
 31.10.2026,UTC,20:30,20:45,NRV-Saldo,Betrieblich,MW,-123.892,0.0,0.0,0.0
 31.10.2026,UTC,20:45,21:00,NRV-Saldo,Betrieblich,MW,-18.102,0.0,0.0,0.0
-31.10.2026,UTC,21:00,21:15,NRV-Saldo,Betrieblich,MW,-300.811,0.0,0.0,0.0
+31.10.2026,UTC,21:00,21:15,NRV-Saldo,Betrieblich,MW,-301.682,0.0,0.0,0.0
+31.10.2026,UTC,21:15,21:30,NRV-Saldo,Betrieblich,MW,-376.074,0.0,0.0,0.0
+31.10.2026,UTC,21:30,21:45,NRV-Saldo,Betrieblich,MW,-307.786,0.0,0.0,0.0
+31.10.2026,UTC,21:45,22:00,NRV-Saldo,Betrieblich,MW,-287.206,0.0,0.0,0.0
+31.10.2026,UTC,22:00,22:15,NRV-Saldo,Betrieblich,MW,57.925,0.0,0.0,0.0
+31.10.2026,UTC,22:15,22:30,NRV-Saldo,Betrieblich,MW,-200.256,0.0,0.0,0.0
+31.10.2026,UTC,22:30,22:45,NRV-Saldo,Betrieblich,MW,-375.745,0.0,0.0,0.0
+31.10.2026,UTC,22:45,23:00,NRV-Saldo,Betrieblich,MW,-356.62,0.0,0.0,0.0
+31.10.2026,UTC,23:00,23:15,NRV-Saldo,Betrieblich,MW,-543.764,0.0,0.0,0.0
+31.10.2026,UTC,23:15,23:30,NRV-Saldo,Betrieblich,MW,-292.701,0.0,0.0,0.0
+31.10.2026,UTC,23:30,23:45,NRV-Saldo,Betrieblich,MW,-166.924,0.0,0.0,0.0
+31.10.2026,UTC,23:45,00:00,NRV-Saldo,Betrieblich,MW,-265.194,0.0,0.0,0.0
+01.11.2026,UTC,00:00,00:15,NRV-Saldo,Betrieblich,MW,,,,
